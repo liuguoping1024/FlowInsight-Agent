@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlowInsight - 股票资金流动分析系统</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .nav-tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-tab:hover {
+            background: #5568d3;
+            color: white;
+        }
+        
+        .content-panel {
+            display: none;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .content-panel.active {
+            display: block;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .positive {
+            color: #e74c3c;
+        }
+        
+        .negative {
+            color: #27ae60;
+        }
+        
+        .health-score {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        
+        .health-high {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .health-medium {
+            background: #f39c12;
+            color: white;
+        }
+        
+        .health-low {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .index-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .index-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .index-name {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .index-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .index-change {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 FlowInsight - 股票资金流动分析系统</h1>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showPanel('dashboard')">我的股票看板</button>
+                <button class="nav-tab" onclick="showPanel('realtime')">实时资金流向</button>
+                <button class="nav-tab" onclick="showPanel('history')">历史资金流量</button>
+            </div>
+        </div>
+        
+        <!-- 我的股票看板 -->
+        <div id="dashboard" class="content-panel active">
+            <div class="card">
+                <div class="card-title">我的股票健康度</div>
+                <button class="btn btn-primary" onclick="loadDashboard()">刷新数据</button>
+                <div id="dashboard-content" class="loading">加载中...</div>
+            </div>
+        </div>
+        
+        <!-- 实时资金流向 -->
+        <div id="realtime" class="content-panel">
+            <div class="card">
+                <div class="card-title">实时资金流向（前20名）</div>
+                <button class="btn btn-primary" onclick="loadRealtimeFlow()">刷新数据</button>
+                <button class="btn btn-success" onclick="sortByInflow()">按主力净流入排序</button>
+                <button class="btn btn-success" onclick="sortByChange()">按涨跌幅排序</button>
+                <div id="realtime-content" class="loading">加载中...</div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">主要指数</div>
+                <div id="index-content" class="loading">加载中...</div>
+            </div>
+        </div>
+        
+        <!-- 历史资金流量 -->
+        <div id="history" class="content-panel">
+            <div class="card">
+                <div class="card-title">历史资金流量</div>
+                <input type="text" id="stock-code-input" placeholder="输入股票代码（如：0.300274）" style="padding: 8px; width: 300px; margin-right: 10px;">
+                <button class="btn btn-primary" onclick="loadHistory()">查询历史数据</button>
+                <button class="btn btn-success" onclick="syncHistory()">同步数据</button>
+                <div id="history-content" class="loading">请输入股票代码查询</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8887/api';
+        
+        function showPanel(panelId) {
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(panelId).classList.add('active');
+            event.target.classList.add('active');
+            
+            // 自动加载数据
+            if (panelId === 'dashboard') {
+                loadDashboard();
+            } else if (panelId === 'realtime') {
+                loadRealtimeFlow();
+                loadIndexData();
+            }
+        }
+        
+        async function loadDashboard() {
+            const content = document.getElementById('dashboard-content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/dashboard/my-stocks?user_id=1`);
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    let html = '<table><thead><tr><th>股票代码</th><th>股票名称</th><th>健康度</th><th>趋势</th><th>风险等级</th><th>7日主力流入</th><th>最新价格</th><th>涨跌幅</th></tr></thead><tbody>';
+                    
+                    result.data.forEach(stock => {
+                        const healthClass = stock.health_score >= 80 ? 'health-high' : 
+                                          stock.health_score >= 60 ? 'health-medium' : 'health-low';
+                        const latest = stock.latest_data || {};
+                        const changeClass = latest.change_percent > 0 ? 'positive' : 'negative';
+                        
+                        html += `
+                            <tr>
+                                <td>${stock.stock_code}</td>
+                                <td>${stock.stock_name || '-'}</td>
+                                <td><span class="health-score ${healthClass}">${stock.health_score.toFixed(1)}</span></td>
+                                <td>${getTrendText(stock.trend_direction)}</td>
+                                <td>${getRiskText(stock.risk_level)}</td>
+                                <td>${formatMoney(stock.main_net_inflow_7d || 0)}</td>
+                                <td>${latest.close_price ? latest.close_price.toFixed(2) : '-'}</td>
+                                <td class="${changeClass}">${latest.change_percent ? latest.change_percent.toFixed(2) + '%' : '-'}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="loading">暂无数据，请先添加关注的股票</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadRealtimeFlow() {
+            const content = document.getElementById('realtime-content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/realtime/capital-flow?limit=20`);
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    let html = '<table><thead><tr><th>股票代码</th><th>股票名称</th><th>当前价</th><th>涨跌幅</th><th>主力净流入</th><th>超大单</th><th>大单</th><th>中单</th><th>小单</th></tr></thead><tbody>';
+                    
+                    result.data.forEach(stock => {
+                        const changeClass = stock.change_percent > 0 ? 'positive' : 'negative';
+                        html += `
+                            <tr>
+                                <td>${stock.stock_code}</td>
+                                <td>${stock.stock_name}</td>
+                                <td>${stock.current_price.toFixed(2)}</td>
+                                <td class="${changeClass}">${stock.change_percent.toFixed(2)}%</td>
+                                <td class="${stock.main_net_inflow > 0 ? 'positive' : 'negative'}">${formatMoney(stock.main_net_inflow)}</td>
+                                <td>${formatMoney(stock.super_large_net_inflow)}</td>
+                                <td>${formatMoney(stock.large_net_inflow)}</td>
+                                <td>${formatMoney(stock.medium_net_inflow)}</td>
+                                <td>${formatMoney(stock.small_net_inflow)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                    window.realtimeData = result.data;
+                } else {
+                    content.innerHTML = '<div class="loading">暂无数据</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadIndexData() {
+            const content = document.getElementById('index-content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/realtime/index`);
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    let html = '<div class="index-grid">';
+                    
+                    result.data.forEach(index => {
+                        const changeClass = index.change_percent > 0 ? 'positive' : 'negative';
+                        html += `
+                            <div class="index-card">
+                                <div class="index-name">${index.index_name}</div>
+                                <div class="index-value">${index.current_value.toFixed(2)}</div>
+                                <div class="index-change ${changeClass}">
+                                    ${index.change_percent > 0 ? '+' : ''}${index.change_percent.toFixed(2)}% 
+                                    (${index.change_value > 0 ? '+' : ''}${index.change_value.toFixed(2)})
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="loading">暂无数据</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadHistory() {
+            const secid = document.getElementById('stock-code-input').value.trim();
+            if (!secid) {
+                alert('请输入股票代码');
+                return;
+            }
+            
+            const content = document.getElementById('history-content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/stocks/${secid}/history?limit=30`);
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    let html = '<table><thead><tr><th>日期</th><th>收盘价</th><th>涨跌幅</th><th>主力净流入</th><th>超大单</th><th>主力占比</th><th>换手率</th><th>成交额</th></tr></thead><tbody>';
+                    
+                    result.data.forEach(item => {
+                        const changeClass = item.change_percent > 0 ? 'positive' : 'negative';
+                        html += `
+                            <tr>
+                                <td>${item.trade_date}</td>
+                                <td>${item.close_price.toFixed(2)}</td>
+                                <td class="${changeClass}">${item.change_percent.toFixed(2)}%</td>
+                                <td class="${item.main_net_inflow > 0 ? 'positive' : 'negative'}">${formatMoney(item.main_net_inflow)}</td>
+                                <td>${formatMoney(item.super_large_net_inflow || 0)}</td>
+                                <td>${(item.main_net_inflow_ratio || 0).toFixed(2)}%</td>
+                                <td>${(item.turnover_rate || 0).toFixed(2)}%</td>
+                                <td>${formatMoney(item.turnover_amount || 0)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="loading">暂无历史数据，请先同步数据</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function syncHistory() {
+            const secid = document.getElementById('stock-code-input').value.trim();
+            if (!secid) {
+                alert('请输入股票代码');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/sync/stock-history/${secid}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({limit: 250})
+                });
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    alert('同步成功！');
+                    loadHistory();
+                } else {
+                    alert('同步失败: ' + result.message);
+                }
+            } catch (error) {
+                alert('同步失败: ' + error.message);
+            }
+        }
+        
+        function sortByInflow() {
+            if (!window.realtimeData) {
+                loadRealtimeFlow();
+                return;
+            }
+            
+            const sorted = [...window.realtimeData].sort((a, b) => b.main_net_inflow - a.main_net_inflow);
+            renderRealtimeTable(sorted);
+        }
+        
+        function sortByChange() {
+            if (!window.realtimeData) {
+                loadRealtimeFlow();
+                return;
+            }
+            
+            const sorted = [...window.realtimeData].sort((a, b) => b.change_percent - a.change_percent);
+            renderRealtimeTable(sorted);
+        }
+        
+        function renderRealtimeTable(data) {
+            const content = document.getElementById('realtime-content');
+            let html = '<table><thead><tr><th>股票代码</th><th>股票名称</th><th>当前价</th><th>涨跌幅</th><th>主力净流入</th><th>超大单</th><th>大单</th><th>中单</th><th>小单</th></tr></thead><tbody>';
+            
+            data.forEach(stock => {
+                const changeClass = stock.change_percent > 0 ? 'positive' : 'negative';
+                html += `
+                    <tr>
+                        <td>${stock.stock_code}</td>
+                        <td>${stock.stock_name}</td>
+                        <td>${stock.current_price.toFixed(2)}</td>
+                        <td class="${changeClass}">${stock.change_percent.toFixed(2)}%</td>
+                        <td class="${stock.main_net_inflow > 0 ? 'positive' : 'negative'}">${formatMoney(stock.main_net_inflow)}</td>
+                        <td>${formatMoney(stock.super_large_net_inflow)}</td>
+                        <td>${formatMoney(stock.large_net_inflow)}</td>
+                        <td>${formatMoney(stock.medium_net_inflow)}</td>
+                        <td>${formatMoney(stock.small_net_inflow)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function formatMoney(value) {
+            if (value >= 100000000) {
+                return (value / 100000000).toFixed(2) + '亿';
+            } else if (value >= 10000) {
+                return (value / 10000).toFixed(2) + '万';
+            } else {
+                return value.toFixed(2);
+            }
+        }
+        
+        function getTrendText(trend) {
+            const map = {
+                'inflow': '资金流入',
+                'outflow': '资金流出',
+                'stable': '资金稳定',
+                'unknown': '未知'
+            };
+            return map[trend] || trend;
+        }
+        
+        function getRiskText(risk) {
+            const map = {
+                'low': '低风险',
+                'medium': '中风险',
+                'high': '高风险'
+            };
+            return map[risk] || risk;
+        }
+        
+        // 页面加载时自动加载数据
+        window.onload = function() {
+            loadDashboard();
+        };
+        
+        // 定时刷新实时数据
+        setInterval(() => {
+            if (document.getElementById('realtime').classList.contains('active')) {
+                loadRealtimeFlow();
+                loadIndexData();
+            }
+        }, 30000); // 每30秒刷新一次
+    </script>
+</body>
+</html>
+
