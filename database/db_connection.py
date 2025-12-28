@@ -1,6 +1,12 @@
 """
 数据库连接管理
 """
+# 显式导入 cryptography 以确保 pymysql 可以正确使用它
+try:
+    import cryptography  # noqa: F401
+except ImportError:
+    pass  # 如果导入失败，pymysql 会给出更明确的错误信息
+
 import pymysql
 from pymysql.cursors import DictCursor
 from config import DB_CONFIG

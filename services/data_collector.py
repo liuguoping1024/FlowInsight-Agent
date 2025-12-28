@@ -139,17 +139,71 @@ class DataCollector:
             logger.error(f"获取个股列表失败: {e}")
             return all_stocks  # 返回已获取的数据
     
-    def sync_stock_list(self, delay: float = 1.0):
-        """同步个股列表到数据库
+    def sync_stock_list(self, delay: float = 1.0) -> Dict:
+        """
+        同步个股列表到数据库（增强版，包含同步前后检查）
+        返回同步结果统计
         
         Args:
             delay: 每次请求后的延迟时间（秒），默认1秒
         """
+        result = {
+            'success': False,
+            'message': '',
+            'before_sync': {},
+            'after_sync': {},
+            'sync_stats': {
+                'api_returned_count': 0,
+                'new_stocks': 0,
+                'updated_stocks': 0
+            }
+        }
+        
+        # 1. 同步前检查：查询数据库中已有的股票数量
+        try:
+            sql_before = """
+            SELECT COUNT(*) as total_stocks
+            FROM stock_list
+            WHERE is_active = 1
+            """
+            before_data = db.execute_query(sql_before)
+            result['before_sync'] = {
+                'total_stocks': before_data[0]['total_stocks'] if before_data else 0
+            }
+        except Exception as e:
+            logger.warning(f"同步前检查失败: {e}")
+            result['before_sync'] = {'error': str(e)}
+        
+        # 2. 从API获取数据
         stocks = self.get_stock_list(delay=delay)
         if not stocks:
-            logger.warning("未获取到个股数据")
-            return
+            result['message'] = '未获取到个股数据'
+            logger.warning(result['message'])
+            return result
         
+        result['sync_stats']['api_returned_count'] = len(stocks)
+        
+        # 3. 检查哪些是新股票，哪些是更新股票
+        if result['before_sync'].get('total_stocks', 0) > 0:
+            # 查询数据库中已存在的股票代码
+            sql_existing = """
+            SELECT secid
+            FROM stock_list
+            WHERE is_active = 1
+            """
+            existing_secids = {row['secid'] for row in db.execute_query(sql_existing)}
+            
+            new_secids = [s['secid'] for s in stocks if s['secid'] not in existing_secids]
+            update_secids = [s['secid'] for s in stocks if s['secid'] in existing_secids]
+            
+            result['sync_stats']['new_stocks'] = len(new_secids)
+            result['sync_stats']['updated_stocks'] = len(update_secids)
+        else:
+            # 首次同步，全部是新股票
+            result['sync_stats']['new_stocks'] = len(stocks)
+            result['sync_stats']['updated_stocks'] = 0
+        
+        # 4. 执行数据库插入/更新
         sql = """
         INSERT INTO stock_list (stock_code, market_code, stock_name, secid, 
                                total_market_cap, circulating_market_cap, last_sync_time)
@@ -171,8 +225,27 @@ class DataCollector:
         try:
             affected = db.execute_many(sql, params_list)
             logger.info(f"同步个股列表成功，共 {affected} 条记录")
+            
+            # 5. 同步后检查：查询更新后的股票数量
+            sql_after = """
+            SELECT COUNT(*) as total_stocks
+            FROM stock_list
+            WHERE is_active = 1
+            """
+            after_data = db.execute_query(sql_after)
+            result['after_sync'] = {
+                'total_stocks': after_data[0]['total_stocks'] if after_data else 0
+            }
+            
+            result['success'] = True
+            result['message'] = f'同步成功，新增 {result["sync_stats"]["new_stocks"]} 只，更新 {result["sync_stats"]["updated_stocks"]} 只'
+            
         except Exception as e:
-            logger.error(f"同步个股列表到数据库失败: {e}")
+            logger.error(f"同步个股列表失败: {e}")
+            result['message'] = f'同步失败: {str(e)}'
+            result['success'] = False
+        
+        return result
     
     def get_realtime_capital_flow(self, limit: int = 20) -> List[Dict]:
         """
@@ -326,13 +399,88 @@ class DataCollector:
             logger.error(f"获取个股历史资金数据失败: {e}, secid: {secid}")
             return []
     
-    def sync_stock_capital_flow_history(self, secid: str, limit: int = 250):
-        """同步个股历史资金数据到数据库"""
+    def sync_stock_capital_flow_history(self, secid: str, limit: int = 250) -> Dict:
+        """
+        同步个股历史资金数据到数据库（增强版，包含同步前后检查）
+        返回同步结果统计
+        """
+        result = {
+            'secid': secid,
+            'success': False,
+            'message': '',
+            'before_sync': {},
+            'after_sync': {},
+            'sync_stats': {
+                'api_returned_days': 0,
+                'new_days': 0,
+                'updated_days': 0,
+                'date_range': {}
+            }
+        }
+        
+        # 1. 同步前检查：查询数据库中已有的数据范围
+        try:
+            sql_before = """
+            SELECT 
+                MIN(trade_date) as earliest_date,
+                MAX(trade_date) as latest_date,
+                COUNT(*) as total_records
+            FROM stock_capital_flow_history
+            WHERE secid = %s
+            """
+            before_data = db.execute_query(sql_before, (secid,))
+            if before_data and before_data[0]['earliest_date']:
+                result['before_sync'] = {
+                    'earliest_date': str(before_data[0]['earliest_date']),
+                    'latest_date': str(before_data[0]['latest_date']),
+                    'total_records': before_data[0]['total_records']
+                }
+            else:
+                result['before_sync'] = {
+                    'earliest_date': None,
+                    'latest_date': None,
+                    'total_records': 0
+                }
+        except Exception as e:
+            logger.warning(f"同步前检查失败: {e}")
+            result['before_sync'] = {'error': str(e)}
+        
+        # 2. 从API获取数据
         history_data = self.get_stock_capital_flow_history(secid, limit)
         if not history_data:
-            logger.warning(f"未获取到历史数据: {secid}")
-            return
+            result['message'] = f'未获取到历史数据: {secid}'
+            logger.warning(result['message'])
+            return result
         
+        # 统计API返回的数据
+        api_dates = [d['trade_date'] for d in history_data]
+        result['sync_stats']['api_returned_days'] = len(history_data)
+        result['sync_stats']['date_range'] = {
+            'earliest': str(min(api_dates)) if api_dates else None,
+            'latest': str(max(api_dates)) if api_dates else None
+        }
+        
+        # 3. 检查哪些是新数据，哪些是更新数据
+        if result['before_sync'].get('total_records', 0) > 0:
+            # 查询数据库中已存在的日期
+            sql_existing = """
+            SELECT trade_date
+            FROM stock_capital_flow_history
+            WHERE secid = %s
+            """
+            existing_dates = {row['trade_date'] for row in db.execute_query(sql_existing, (secid,))}
+            
+            new_dates = [d for d in api_dates if d not in existing_dates]
+            update_dates = [d for d in api_dates if d in existing_dates]
+            
+            result['sync_stats']['new_days'] = len(new_dates)
+            result['sync_stats']['updated_days'] = len(update_dates)
+        else:
+            # 首次同步，全部是新数据
+            result['sync_stats']['new_days'] = len(history_data)
+            result['sync_stats']['updated_days'] = 0
+        
+        # 4. 执行数据库插入/更新
         sql = """
         INSERT INTO stock_capital_flow_history (
             stock_code, market_code, secid, trade_date,
@@ -367,8 +515,33 @@ class DataCollector:
         try:
             affected = db.execute_many(sql, params_list)
             logger.info(f"同步历史资金数据成功，secid: {secid}, 共 {affected} 条记录")
+            
+            # 5. 同步后检查：查询更新后的数据范围
+            sql_after = """
+            SELECT 
+                MIN(trade_date) as earliest_date,
+                MAX(trade_date) as latest_date,
+                COUNT(*) as total_records
+            FROM stock_capital_flow_history
+            WHERE secid = %s
+            """
+            after_data = db.execute_query(sql_after, (secid,))
+            if after_data and after_data[0]['earliest_date']:
+                result['after_sync'] = {
+                    'earliest_date': str(after_data[0]['earliest_date']),
+                    'latest_date': str(after_data[0]['latest_date']),
+                    'total_records': after_data[0]['total_records']
+                }
+            
+            result['success'] = True
+            result['message'] = f'同步成功，新增 {result["sync_stats"]["new_days"]} 天，更新 {result["sync_stats"]["updated_days"]} 天'
+            
         except Exception as e:
-            logger.error(f"同步历史资金数据到数据库失败: {e}, secid: {secid}")
+            logger.error(f"同步历史资金数据失败: {e}")
+            result['message'] = f'同步失败: {str(e)}'
+            result['success'] = False
+        
+        return result
     
     def get_index_data(self) -> List[Dict]:
         """
