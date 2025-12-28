@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的看板 - FlowInsight</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+        
+        .empty-state-text {
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .btn-go-settings {
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-go-settings:hover {
+            background: #5568d3;
+        }
+        
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .stock-table th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .stock-table td {
+            padding: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stock-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .health-score {
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+        
+        .health-high {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .health-medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .health-low {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .positive {
+            color: #d32f2f;
+        }
+        
+        .negative {
+            color: #388e3c;
+        }
+        
+        .btn-refresh {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-refresh:hover {
+            background: #5568d3;
+        }
+        
+        .btn-refresh:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav-bar></nav-bar>
+        
+        <div class="dashboard-container">
+            <!-- 持股股票健康度 -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">我的持股 - 健康度分析</h2>
+                    <button class="btn-refresh" onclick="refreshHoldings()" id="refreshHoldingsBtn">刷新</button>
+                </div>
+                <div id="holdings-content">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+            
+            <!-- 收藏股票推荐度 -->
+            <div class="section">
+                <div class="section-header">
+                    <h2 class="section-title">我的收藏 - 推荐度分析</h2>
+                    <button class="btn-refresh" onclick="refreshFavorites()" id="refreshFavoritesBtn">刷新</button>
+                </div>
+                <div id="favorites-content">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/navbar.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:8887/api';
+        
+        // 页面加载时检查认证
+        (async function() {
+            const isAuthenticated = await Auth.requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            loadDashboard();
+        })();
+        
+        async function loadDashboard() {
+            await Promise.all([
+                loadHoldings(),
+                loadFavorites()
+            ]);
+        }
+        
+        async function loadHoldings() {
+            const content = document.getElementById('holdings-content');
+            if (!content) {
+                console.error('holdings-content element not found');
+                return;
+            }
+            
+            try {
+                console.log('开始加载持股数据...');
+                const response = await Auth.authFetch(`${API_BASE}/dashboard/holdings`);
+                if (!response) {
+                    console.error('Auth fetch failed or redirected');
+                    content.innerHTML = '<div class="loading" style="color: red;">认证失败，请重新登录</div>';
+                    return;
+                }
+                
+                console.log('API响应状态:', response.status);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API错误响应:', errorText);
+                    content.innerHTML = `<div class="loading" style="color: red;">API错误: ${response.status} ${errorText}</div>`;
+                    return;
+                }
+                
+                const result = await response.json();
+                console.log('Holdings API response:', result);
+                
+                if (result.code === 0) {
+                    if (result.data && result.data.length > 0) {
+                        renderHoldingsTable(result.data);
+                    } else {
+                        content.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📊</div>
+                                <div class="empty-state-text">您还没有设置持股股票</div>
+                                <button class="btn-go-settings" onclick="showAddHoldingModal()">添加我的持股</button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${result.message || '未知错误'}</div>`;
+                }
+            } catch (error) {
+                console.error('Load holdings error:', error);
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message || '网络错误'}</div>`;
+            }
+        }
+        
+        async function loadFavorites() {
+            const content = document.getElementById('favorites-content');
+            if (!content) {
+                console.error('favorites-content element not found');
+                return;
+            }
+            
+            try {
+                console.log('开始加载收藏数据...');
+                const response = await Auth.authFetch(`${API_BASE}/dashboard/favorites`);
+                if (!response) {
+                    console.error('Auth fetch failed or redirected');
+                    content.innerHTML = '<div class="loading" style="color: red;">认证失败，请重新登录</div>';
+                    return;
+                }
+                
+                console.log('API响应状态:', response.status);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('API错误响应:', errorText);
+                    content.innerHTML = `<div class="loading" style="color: red;">API错误: ${response.status} ${errorText}</div>`;
+                    return;
+                }
+                
+                const result = await response.json();
+                console.log('Favorites API response:', result);
+                
+                if (result.code === 0) {
+                    if (result.data && result.data.length > 0) {
+                        renderFavoritesTable(result.data);
+                    } else {
+                        content.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">⭐</div>
+                                <div class="empty-state-text">您还没有收藏任何股票</div>
+                                <button class="btn-go-settings" onclick="showAddFavoriteModal()">添加我的收藏</button>
+                            </div>
+                        `;
+                    }
+                } else {
+                    content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${result.message || '未知错误'}</div>`;
+                }
+            } catch (error) {
+                console.error('Load favorites error:', error);
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message || '网络错误'}</div>`;
+            }
+        }
+        
+        function renderHoldingsTable(data) {
+            const content = document.getElementById('holdings-content');
+            let html = `
+                <table class="stock-table">
+                    <thead>
+                        <tr>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>健康度</th>
+                            <th>趋势</th>
+                            <th>风险等级</th>
+                            <th>7日主力流入</th>
+                            <th>最新价格</th>
+                            <th>涨跌幅</th>
+                            <th>持股数量</th>
+                            <th>持仓成本</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.forEach(stock => {
+                const healthClass = stock.health_score >= 80 ? 'health-high' : 
+                                  stock.health_score >= 60 ? 'health-medium' : 'health-low';
+                const latest = stock.latest_data || {};
+                const changeClass = latest.change_percent > 0 ? 'positive' : 'negative';
+                
+                html += `
+                    <tr>
+                        <td>${stock.stock_code}</td>
+                        <td>${stock.stock_name || '-'}</td>
+                        <td><span class="health-score ${healthClass}">${stock.health_score.toFixed(1)}</span></td>
+                        <td>${getTrendText(stock.trend_direction)}</td>
+                        <td>${getRiskText(stock.risk_level)}</td>
+                        <td>${formatMoney(stock.main_net_inflow_7d || 0)}</td>
+                        <td>${latest.close_price ? latest.close_price.toFixed(2) : '-'}</td>
+                        <td class="${changeClass}">${latest.change_percent ? latest.change_percent.toFixed(2) + '%' : '-'}</td>
+                        <td>${stock.holding_quantity || 0}</td>
+                        <td>${stock.holding_cost ? stock.holding_cost.toFixed(2) : '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function renderFavoritesTable(data) {
+            const content = document.getElementById('favorites-content');
+            let html = `
+                <table class="stock-table">
+                    <thead>
+                        <tr>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>推荐度</th>
+                            <th>趋势</th>
+                            <th>风险等级</th>
+                            <th>7日主力流入</th>
+                            <th>最新价格</th>
+                            <th>涨跌幅</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.forEach(stock => {
+                const healthClass = stock.health_score >= 80 ? 'health-high' : 
+                                  stock.health_score >= 60 ? 'health-medium' : 'health-low';
+                const latest = stock.latest_data || {};
+                const changeClass = latest.change_percent > 0 ? 'positive' : 'negative';
+                
+                html += `
+                    <tr>
+                        <td>${stock.stock_code}</td>
+                        <td>${stock.stock_name || '-'}</td>
+                        <td><span class="health-score ${healthClass}">${stock.health_score.toFixed(1)}</span></td>
+                        <td>${getTrendText(stock.trend_direction)}</td>
+                        <td>${getRiskText(stock.risk_level)}</td>
+                        <td>${formatMoney(stock.main_net_inflow_7d || 0)}</td>
+                        <td>${latest.close_price ? latest.close_price.toFixed(2) : '-'}</td>
+                        <td class="${changeClass}">${latest.change_percent ? latest.change_percent.toFixed(2) + '%' : '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        async function refreshHoldings() {
+            const btn = document.getElementById('refreshHoldingsBtn');
+            btn.disabled = true;
+            btn.textContent = '刷新中...';
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/dashboard/refresh-holdings`, {
+                    method: 'POST'
+                });
+                if (!response) return;
+                
+                const result = await response.json();
+                if (result.code === 0) {
+                    await loadHoldings();
+                    alert('刷新成功！');
+                } else {
+                    alert('刷新失败: ' + result.message);
+                }
+            } catch (error) {
+                alert('刷新失败: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '刷新';
+            }
+        }
+        
+        async function refreshFavorites() {
+            const btn = document.getElementById('refreshFavoritesBtn');
+            btn.disabled = true;
+            btn.textContent = '刷新中...';
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/dashboard/refresh-favorites`, {
+                    method: 'POST'
+                });
+                if (!response) return;
+                
+                const result = await response.json();
+                if (result.code === 0) {
+                    await loadFavorites();
+                    alert('刷新成功！');
+                } else {
+                    alert('刷新失败: ' + result.message);
+                }
+            } catch (error) {
+                alert('刷新失败: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '刷新';
+            }
+        }
+        
+        function formatMoney(value) {
+            if (value >= 100000000) {
+                return (value / 100000000).toFixed(2) + '亿';
+            } else if (value >= 10000) {
+                return (value / 10000).toFixed(2) + '万';
+            } else {
+                return value.toFixed(2);
+            }
+        }
+        
+        function getTrendText(trend) {
+            const map = {
+                'inflow': '资金流入',
+                'outflow': '资金流出',
+                'stable': '资金稳定',
+                'unknown': '未知'
+            };
+            return map[trend] || trend;
+        }
+        
+        function getRiskText(risk) {
+            const map = {
+                'low': '低风险',
+                'medium': '中风险',
+                'high': '高风险'
+            };
+            return map[risk] || risk;
+        }
+        
+        function showAddHoldingModal() {
+            window.location.href = 'settings.html#holdings';
+        }
+        
+        function showAddFavoriteModal() {
+            window.location.href = 'settings.html#favorites';
+        }
+    </script>
+</body>
+</html>
+

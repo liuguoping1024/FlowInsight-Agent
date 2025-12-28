@@ -1,0 +1,143 @@
+/* 通用样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+/* 导航栏样式 */
+.navbar {
+    background: white;
+    padding: 15px 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+}
+
+.navbar-logo {
+    font-size: 20px;
+    color: #333;
+    margin: 0;
+}
+
+.navbar-tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-link {
+    padding: 8px 16px;
+    text-decoration: none;
+    color: #666;
+    border-radius: 5px;
+    transition: all 0.3s;
+    font-size: 14px;
+}
+
+.nav-link:hover {
+    background: #f0f0f0;
+    color: #667eea;
+}
+
+.nav-link.active {
+    background: #667eea;
+    color: white;
+}
+
+.navbar-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.navbar-user {
+    color: #666;
+    font-size: 14px;
+}
+
+.btn-settings,
+.btn-logout {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-settings {
+    background: #667eea;
+    color: white;
+}
+
+.btn-settings:hover {
+    background: #5568d3;
+}
+
+.btn-logout {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.btn-logout:hover {
+    background: #e0e0e0;
+}
+
+/* 加载状态 */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+/* 通用按钮 */
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+

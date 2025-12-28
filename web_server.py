@@ -10,8 +10,19 @@ app = Flask(__name__, static_folder='static')
 
 @app.route('/')
 def index():
-    """首页"""
-    return send_from_directory('static', 'index.html')
+    """首页 - 重定向到登录页"""
+    from flask import redirect
+    return redirect('/login.html')
+
+@app.route('/dashboard.html')
+def dashboard():
+    """我的看板页面"""
+    return send_from_directory('static', 'dashboard.html')
+
+@app.route('/settings.html')
+def settings():
+    """设置页面"""
+    return send_from_directory('static', 'settings.html')
 
 
 @app.route('/<path:path>')

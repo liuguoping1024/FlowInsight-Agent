@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统设置 - FlowInsight</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .settings-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+        }
+        
+        .settings-sidebar {
+            width: 250px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+        
+        .settings-menu-item {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .settings-menu-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .settings-menu-item.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .settings-content {
+            flex: 1;
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .settings-section {
+            display: none;
+        }
+        
+        .settings-section.active {
+            display: block;
+        }
+        
+        .section-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-input.password {
+            font-family: monospace;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #667eea;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        .btn-save {
+            padding: 10px 24px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-save:hover {
+            background: #5568d3;
+        }
+        
+        .stock-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .stock-list-table th,
+        .stock-list-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stock-list-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        .btn-add {
+            padding: 8px 16px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .btn-delete {
+            padding: 4px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .theme-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .theme-option:hover {
+            border-color: #667eea;
+        }
+        
+        .theme-option.selected {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .theme-option input[type="radio"] {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <nav-bar></nav-bar>
+        
+        <div class="settings-container">
+            <!-- 左侧菜单 -->
+            <div class="settings-sidebar">
+                <div class="settings-menu-item active" onclick="showSection('general', this)">
+                    <span>⚙️</span> 通用设置
+                </div>
+                <div class="settings-menu-item" onclick="showSection('llm', this)">
+                    <span>🤖</span> LLM配置
+                </div>
+                <div class="settings-menu-item" onclick="showSection('holdings', this)">
+                    <span>📊</span> 持股记录
+                </div>
+                <div class="settings-menu-item" onclick="showSection('favorites', this)">
+                    <span>⭐</span> 收藏记录
+                </div>
+                <div class="settings-menu-item" onclick="showSection('account', this)">
+                    <span>👤</span> 账号管理
+                </div>
+                <div class="settings-menu-item" onclick="showSection('agreement', this)">
+                    <span>📄</span> 服务协议
+                </div>
+            </div>
+            
+            <!-- 右侧内容 -->
+            <div class="settings-content">
+                <!-- 通用设置 -->
+                <div id="section-general" class="settings-section active">
+                    <h2 class="section-title">通用设置</h2>
+                    
+                    <div class="form-group">
+                        <label class="form-label">主题设置</label>
+                        <div class="theme-option" onclick="selectTheme('light')">
+                            <input type="radio" name="theme" value="light" id="theme-light" onchange="selectTheme('light')">
+                            <label for="theme-light" style="cursor: pointer;">浅色</label>
+                        </div>
+                        <div class="theme-option" onclick="selectTheme('dark')">
+                            <input type="radio" name="theme" value="dark" id="theme-dark" onchange="selectTheme('dark')">
+                            <label for="theme-dark" style="cursor: pointer;">深色</label>
+                        </div>
+                        <div class="theme-option selected" onclick="selectTheme('system')">
+                            <input type="radio" name="theme" value="system" id="theme-system" checked onchange="selectTheme('system')">
+                            <label for="theme-system" style="cursor: pointer;">跟随系统</label>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-save" onclick="saveGeneralSettings()">保存设置</button>
+                </div>
+                
+                <!-- LLM配置 -->
+                <div id="section-llm" class="settings-section">
+                    <h2 class="section-title">LLM配置</h2>
+                    
+                    <!-- Deepseek配置 -->
+                    <div style="margin-bottom: 40px;">
+                        <h3 style="margin-bottom: 20px;">Deepseek</h3>
+                        <div class="form-group">
+                            <label class="form-label">启用</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="deepseek-enabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API URL</label>
+                            <input type="text" class="form-input" id="deepseek-url" placeholder="https://api.deepseek.com">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Model</label>
+                            <input type="text" class="form-input" id="deepseek-model" placeholder="deepseek-chat">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-input password" id="deepseek-key" placeholder="输入API Key">
+                        </div>
+                        <button class="btn-save" onclick="saveLLMConfig('deepseek')">保存Deepseek配置</button>
+                    </div>
+                    
+                    <!-- ChatGPT配置 -->
+                    <div>
+                        <h3 style="margin-bottom: 20px;">ChatGPT</h3>
+                        <div class="form-group">
+                            <label class="form-label">启用</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="chatgpt-enabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API URL</label>
+                            <input type="text" class="form-input" id="chatgpt-url" placeholder="https://api.openai.com/v1">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Model</label>
+                            <input type="text" class="form-input" id="chatgpt-model" placeholder="gpt-4">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-input password" id="chatgpt-key" placeholder="输入API Key">
+                        </div>
+                        <button class="btn-save" onclick="saveLLMConfig('chatgpt')">保存ChatGPT配置</button>
+                    </div>
+                </div>
+                
+                <!-- 持股记录 -->
+                <div id="section-holdings" class="settings-section">
+                    <h2 class="section-title">持股记录</h2>
+                    <button class="btn-add" onclick="showAddHoldingModal()">+ 添加持股</button>
+                    <div id="holdings-list">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+                
+                <!-- 收藏记录 -->
+                <div id="section-favorites" class="settings-section">
+                    <h2 class="section-title">收藏记录</h2>
+                    <button class="btn-add" onclick="showAddFavoriteModal()">+ 添加收藏</button>
+                    <div id="favorites-list">
+                        <div class="loading">加载中...</div>
+                    </div>
+                </div>
+                
+                <!-- 账号管理 -->
+                <div id="section-account" class="settings-section">
+                    <h2 class="section-title">账号管理</h2>
+                    <div class="form-group">
+                        <label class="form-label">邮箱</label>
+                        <input type="email" class="form-input" id="account-email" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">手机号码</label>
+                        <input type="tel" class="form-input" id="account-phone" readonly>
+                        <button class="btn-secondary" style="margin-top: 10px;">变更</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">登出所有设备</label>
+                        <button class="btn-danger">登出</button>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">注销账号</label>
+                        <button class="btn-danger">注销</button>
+                    </div>
+                </div>
+                
+                <!-- 服务协议 -->
+                <div id="section-agreement" class="settings-section">
+                    <h2 class="section-title">服务协议</h2>
+                    <div style="margin-bottom: 30px;">
+                        <h3 style="margin-bottom: 15px;">用户协议</h3>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; max-height: 400px; overflow-y: auto;">
+                            <p>这里是用户协议内容...</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="margin-bottom: 15px;">隐私协议</h3>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 5px; max-height: 400px; overflow-y: auto;">
+                            <p>这里是隐私协议内容...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 在页面加载前就定义函数，确保 onclick 事件可以访问 -->
+    <script src="js/auth.js"></script>
+    <script src="js/navbar.js"></script>
+    <script>
+        // API_BASE 已在 auth.js 中定义，这里直接使用，不重复声明
+        
+        // 将函数声明提升到全局作用域（在页面加载前就定义）
+        window.showSection = function(sectionId, element) {
+            // 隐藏所有section
+            document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.settings-menu-item').forEach(m => m.classList.remove('active'));
+            
+            // 显示选中的section
+            const section = document.getElementById(`section-${sectionId}`);
+            if (section) {
+                section.classList.add('active');
+            }
+            
+            // 高亮选中的菜单项
+            if (element) {
+                element.classList.add('active');
+            }
+        }
+        
+        window.selectTheme = function(theme) {
+            document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('selected'));
+            const radio = document.getElementById(`theme-${theme}`);
+            if (radio) {
+                radio.checked = true;
+                const themeOption = radio.closest('.theme-option');
+                if (themeOption) {
+                    themeOption.classList.add('selected');
+                }
+            }
+        }
+        
+        window.loadSettings = async function() {
+            // 加载通用设置
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/general`);
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0 && result.data) {
+                        const theme = result.data.theme || 'system';
+                        document.getElementById(`theme-${theme}`).checked = true;
+                        document.querySelector(`#theme-${theme}`).closest('.theme-option').classList.add('selected');
+                    }
+                }
+            } catch (error) {
+                console.error('加载设置失败:', error);
+            }
+            
+            // 加载LLM配置
+            loadLLMConfigs();
+            
+            // 加载持股和收藏
+            loadHoldings();
+            loadFavorites();
+            
+            // 加载账号信息
+            loadAccountInfo();
+        }
+        
+        window.saveGeneralSettings = async function() {
+            const theme = document.querySelector('input[name="theme"]:checked').value;
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/general`, {
+                    method: 'POST',
+                    body: JSON.stringify({ theme })
+                });
+                
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        alert('设置保存成功！');
+                    } else {
+                        alert('保存失败: ' + result.message);
+                    }
+                }
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+        
+        window.loadLLMConfigs = async function() {
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/llm`);
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0 && result.data) {
+                        const configs = result.data;
+                        
+                        // 加载Deepseek配置
+                        if (configs.deepseek) {
+                            document.getElementById('deepseek-enabled').checked = configs.deepseek.is_enabled;
+                            document.getElementById('deepseek-url').value = configs.deepseek.api_url || '';
+                            document.getElementById('deepseek-model').value = configs.deepseek.model || '';
+                            // API Key不显示，只显示占位符
+                            if (configs.deepseek.api_key) {
+                                document.getElementById('deepseek-key').placeholder = '已设置（输入新值以更新）';
+                            }
+                        }
+                        
+                        // 加载ChatGPT配置
+                        if (configs.chatgpt) {
+                            document.getElementById('chatgpt-enabled').checked = configs.chatgpt.is_enabled;
+                            document.getElementById('chatgpt-url').value = configs.chatgpt.api_url || '';
+                            document.getElementById('chatgpt-model').value = configs.chatgpt.model || '';
+                            if (configs.chatgpt.api_key) {
+                                document.getElementById('chatgpt-key').placeholder = '已设置（输入新值以更新）';
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('加载LLM配置失败:', error);
+            }
+        }
+        
+        window.saveLLMConfig = async function(provider) {
+            const enabled = document.getElementById(`${provider}-enabled`).checked;
+            const url = document.getElementById(`${provider}-url`).value.trim();
+            const model = document.getElementById(`${provider}-model`).value.trim();
+            const key = document.getElementById(`${provider}-key`).value.trim();
+            
+            if (!url || !model) {
+                alert('请填写API URL和Model');
+                return;
+            }
+            
+            try {
+                const data = {
+                    api_url: url,
+                    model: model,
+                    is_enabled: enabled
+                };
+                
+                if (key) {
+                    data.api_key = key;
+                }
+                
+                const response = await Auth.authFetch(`${API_BASE}/settings/llm/${provider}`, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        alert('配置保存成功！');
+                        document.getElementById(`${provider}-key`).value = '';
+                        document.getElementById(`${provider}-key`).placeholder = '已设置（输入新值以更新）';
+                    } else {
+                        alert('保存失败: ' + result.message);
+                    }
+                }
+            } catch (error) {
+                alert('保存失败: ' + error.message);
+            }
+        }
+        
+        window.loadHoldings = async function() {
+            const content = document.getElementById('holdings-list');
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/holdings`);
+                if (!response) return;
+                
+                const result = await response.json();
+                if (result.code === 0) {
+                    if (result.data && result.data.length > 0) {
+                        window.renderHoldingsList(result.data);
+                    } else {
+                        content.innerHTML = '<div class="loading">暂无持股记录</div>';
+                    }
+                } else {
+                    content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${result.message}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        window.loadFavorites = async function() {
+            const content = document.getElementById('favorites-list');
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/favorites`);
+                if (!response) return;
+                
+                const result = await response.json();
+                if (result.code === 0) {
+                    if (result.data && result.data.length > 0) {
+                        window.renderFavoritesList(result.data);
+                    } else {
+                        content.innerHTML = '<div class="loading">暂无收藏记录</div>';
+                    }
+                } else {
+                    content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${result.message}</div>`;
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        window.loadAccountInfo = async function() {
+            const user = Auth.getUser();
+            if (user) {
+                document.getElementById('account-email').value = user.email || '';
+                document.getElementById('account-phone').value = user.phone || '';
+            }
+        }
+        
+        window.renderHoldingsList = function(data) {
+            const content = document.getElementById('holdings-list');
+            let html = `
+                <table class="stock-list-table">
+                    <thead>
+                        <tr>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>持股数量</th>
+                            <th>持仓成本</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${item.stock_code}</td>
+                        <td>${item.stock_name || '-'}</td>
+                        <td>${item.holding_quantity || 0}</td>
+                        <td>${item.holding_cost ? parseFloat(item.holding_cost).toFixed(2) : '0.00'}</td>
+                        <td>
+                            <button class="btn-delete" onclick="deleteHolding(${item.id})">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        window.renderFavoritesList = function(data) {
+            const content = document.getElementById('favorites-list');
+            let html = `
+                <table class="stock-list-table">
+                    <thead>
+                        <tr>
+                            <th>股票代码</th>
+                            <th>股票名称</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            data.forEach(item => {
+                html += `
+                    <tr>
+                        <td>${item.stock_code}</td>
+                        <td>${item.stock_name || '-'}</td>
+                        <td>
+                            <button class="btn-delete" onclick="deleteFavorite(${item.id})">删除</button>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        window.showAddHoldingModal = async function() {
+            const stockCode = prompt('请输入股票代码（如：000001）:');
+            if (!stockCode) return;
+            
+            const stockName = prompt('请输入股票名称（可选）:') || '';
+            const quantity = prompt('请输入持股数量:');
+            if (!quantity || isNaN(quantity)) {
+                alert('请输入有效的持股数量');
+                return;
+            }
+            
+            const cost = prompt('请输入持仓成本（可选，直接回车跳过）:') || '0';
+            const marketCode = confirm('是否深市股票？\n确定=深市(0)，取消=沪市(1)') ? 0 : 1;
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/holdings`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        stock_code: stockCode.trim(),
+                        stock_market: marketCode,
+                        stock_name: stockName.trim(),
+                        holding_quantity: parseInt(quantity),
+                        holding_cost: parseFloat(cost) || 0
+                    })
+                });
+                
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        alert('添加成功！');
+                        window.loadHoldings();
+                    } else {
+                        alert('添加失败: ' + result.message);
+                    }
+                }
+            } catch (error) {
+                alert('添加失败: ' + error.message);
+            }
+        }
+        
+        window.showAddFavoriteModal = async function() {
+            const stockCode = prompt('请输入股票代码（如：000001）:');
+            if (!stockCode) return;
+            
+            const stockName = prompt('请输入股票名称（可选）:') || '';
+            const marketCode = confirm('是否深市股票？\n确定=深市(0)，取消=沪市(1)') ? 0 : 1;
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/favorites`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        stock_code: stockCode.trim(),
+                        stock_market: marketCode,
+                        stock_name: stockName.trim()
+                    })
+                });
+                
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        alert('添加成功！');
+                        window.loadFavorites();
+                    } else {
+                        alert('添加失败: ' + result.message);
+                    }
+                }
+            } catch (error) {
+                alert('添加失败: ' + error.message);
+            }
+        }
+        
+        window.deleteHolding = async function(id) {
+            if (!confirm('确定要删除这条持股记录吗？')) return;
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/holdings/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        alert('删除成功！');
+                        window.loadHoldings();
+                    } else {
+                        alert('删除失败: ' + result.message);
+                    }
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        }
+        
+        window.deleteFavorite = async function(id) {
+            if (!confirm('确定要删除这条收藏记录吗？')) return;
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/settings/favorites/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response) {
+                    const result = await response.json();
+                    if (result.code === 0) {
+                        alert('删除成功！');
+                        window.loadFavorites();
+                    } else {
+                        alert('删除失败: ' + result.message);
+                    }
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
+        };
+        
+        // 页面加载时检查认证
+        (async function() {
+            const isAuthenticated = await Auth.requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            loadSettings();
+            
+            // 检查URL hash，跳转到对应section
+            if (window.location.hash) {
+                const sectionId = window.location.hash.substring(1);
+                setTimeout(() => {
+                    const menuItems = document.querySelectorAll('.settings-menu-item');
+                    for (let item of menuItems) {
+                        if (item.getAttribute('onclick') && item.getAttribute('onclick').includes(`'${sectionId}'`)) {
+                            showSection(sectionId, item);
+                            break;
+                        }
+                    }
+                }, 100);
+            }
+        })();
+    </script>
+</body>
+</html>
+
