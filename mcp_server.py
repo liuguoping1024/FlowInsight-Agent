@@ -105,6 +105,17 @@ class MCPServer:
         if not stock_name:
             raise ValueError('stock_name参数必填，请输入股票名称（如"中国平安"）')
         
+        # 确保 stock_name 是正确的 UTF-8 字符串
+        # 如果传入的是字节串，尝试解码
+        if isinstance(stock_name, bytes):
+            try:
+                stock_name = stock_name.decode('utf-8')
+            except UnicodeDecodeError:
+                try:
+                    stock_name = stock_name.decode('gbk')
+                except UnicodeDecodeError:
+                    stock_name = stock_name.decode('utf-8', errors='replace')
+        
         # 查询股票信息
         sql = """
         SELECT stock_code, market_code, stock_name, secid
@@ -119,9 +130,21 @@ class MCPServer:
         stocks = db.execute_query(sql, (keyword_pattern, stock_name))
         
         if not stocks:
+            # 使用安全的错误消息格式化，避免编码问题
+            # 如果 stock_name 包含无法显示的字符，使用 repr 或转义
+            try:
+                # 尝试直接格式化
+                safe_name = stock_name
+                message = f'未找到股票名称包含"{safe_name}"的股票'
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                # 如果格式化失败，使用安全的表示方式
+                safe_name = repr(stock_name) if isinstance(stock_name, str) else str(stock_name)
+                message = f'未找到匹配的股票（搜索关键词: {safe_name}）'
+            
             return {
                 'found': False,
-                'message': f'未找到股票名称包含"{stock_name}"的股票',
+                'message': message,
+                'search_keyword': stock_name,  # 同时返回原始搜索关键词
                 'suggestions': []
             }
         

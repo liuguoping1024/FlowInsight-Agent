@@ -19,8 +19,11 @@ except ImportError:
 
 from mcp_server import mcp_server
 
-# 设置标准输出编码为UTF-8（Windows兼容）
+# 设置标准输入输出编码为UTF-8（Windows兼容）
+# 这是关键：必须同时设置 stdin、stdout、stderr 为 UTF-8，否则中文字符会乱码
 if sys.platform == 'win32':
+    # 设置 stdin 为 UTF-8（关键修复：解决参数传递时的编码问题）
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace', line_buffering=True)
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace', line_buffering=True)
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace', line_buffering=True)
 
