@@ -73,7 +73,11 @@ class Auth {
         const token = this.getToken();
         
         if (!token) {
-            // 没有 token，跳转到登录页
+            // 没有 token，保存当前页面URL，然后跳转到登录页
+            const currentUrl = window.location.pathname + window.location.search;
+            if (currentUrl && currentUrl !== '/login.html' && currentUrl !== '/') {
+                localStorage.setItem('redirectAfterLogin', currentUrl);
+            }
             window.location.href = 'login.html';
             return false;
         }
@@ -82,7 +86,11 @@ class Auth {
         const isValid = await this.verifyToken();
         
         if (!isValid) {
-            // Token 无效，清除并跳转到登录页
+            // Token 无效，保存当前页面URL，清除并跳转到登录页
+            const currentUrl = window.location.pathname + window.location.search;
+            if (currentUrl && currentUrl !== '/login.html' && currentUrl !== '/') {
+                localStorage.setItem('redirectAfterLogin', currentUrl);
+            }
             this.clearAuth();
             window.location.href = 'login.html';
             return false;

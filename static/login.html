@@ -165,8 +165,14 @@
             })
             .then(response => {
                 if (response.ok) {
-                    // Token 有效，跳转到首页
-                    window.location.href = 'index.html';
+                    // Token 有效，检查是否有保存的原始目标页面
+                    const redirectUrl = localStorage.getItem('redirectAfterLogin');
+                    if (redirectUrl && redirectUrl !== '/login.html' && redirectUrl !== '/') {
+                        localStorage.removeItem('redirectAfterLogin');
+                        window.location.href = redirectUrl;
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 } else {
                     // Token 无效，清除
                     localStorage.removeItem('token');
@@ -213,8 +219,16 @@
                     localStorage.setItem('token', data.data.token);
                     localStorage.setItem('user', JSON.stringify(data.data.user));
                     
-                    // 跳转到首页
-                    window.location.href = 'index.html';
+                    // 检查是否有保存的原始目标页面
+                    const redirectUrl = localStorage.getItem('redirectAfterLogin');
+                    if (redirectUrl && redirectUrl !== '/login.html' && redirectUrl !== '/') {
+                        // 清除保存的URL并跳转
+                        localStorage.removeItem('redirectAfterLogin');
+                        window.location.href = redirectUrl;
+                    } else {
+                        // 没有保存的URL，跳转到首页
+                        window.location.href = 'index.html';
+                    }
                 } else {
                     showError(data.message || '登录失败');
                     loginBtn.disabled = false;

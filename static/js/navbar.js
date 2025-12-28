@@ -13,9 +13,10 @@ class NavBar extends HTMLElement {
                 <div class="navbar-left">
                     <h1 class="navbar-logo">📊 FlowInsight</h1>
                     <div class="navbar-tabs">
-                        <a href="dashboard.html" class="nav-link" id="nav-dashboard">我的看板</a>
-                        <a href="analysis.html" class="nav-link" id="nav-analysis">股票资金走向分析</a>
-                        <a href="chat.html" class="nav-link" id="nav-chat">智能聊天</a>
+                        <a href="index.html" class="nav-link" id="nav-index">🏠 首页</a>
+                        <a href="dashboard.html" class="nav-link" id="nav-dashboard">📊 我的看板</a>
+                        <a href="capital-flow.html" class="nav-link" id="nav-capital-flow">💰 历史股票资金</a>
+                        <a href="chat.html" class="nav-link" id="nav-chat">💬 智能聊天</a>
                     </div>
                 </div>
                 <div class="navbar-right">

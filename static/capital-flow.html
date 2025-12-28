@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史股票资金 - FlowInsight</title>
+    <link rel="stylesheet" href="css/common.css">
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-tab {
+            padding: 10px 20px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .nav-tab.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-tab:hover {
+            background: #5568d3;
+            color: white;
+        }
+        
+        .content-panel {
+            display: none;
+        }
+        
+        .content-panel.active {
+            display: block;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            padding-right: 25px;
+        }
+        
+        th:hover {
+            background: #5568d3;
+        }
+        
+        th .sort-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+        }
+        
+        tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .positive {
+            color: #e74c3c;
+        }
+        
+        .negative {
+            color: #27ae60;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group input {
+            padding: 8px;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body style="display: none;">
+    <div id="app">
+        <nav-bar></nav-bar>
+        
+        <div class="container">
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="showPanel('realtime', this)">📊 本日资金流向</button>
+                <button class="nav-tab" onclick="showPanel('history', this)">📈 股票历史资金</button>
+            </div>
+            
+            <!-- 本日资金流向 -->
+            <div id="realtime" class="content-panel active">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">实时资金流向（前20名）</div>
+                        <button class="btn btn-primary" onclick="loadRealtimeFlow()">刷新数据</button>
+                    </div>
+                    <div id="realtime-content" class="loading">加载中...</div>
+                </div>
+            </div>
+            
+            <!-- 股票历史资金 -->
+            <div id="history" class="content-panel">
+                <div class="card">
+                    <div class="card-title">股票历史资金流向</div>
+                    <div class="form-group">
+                        <input type="text" id="stock-code-input" placeholder="输入股票代码（如：0.300274）">
+                        <button class="btn btn-primary" onclick="loadHistory()">查询历史数据</button>
+                        <button class="btn btn-success" onclick="syncHistory()">同步数据</button>
+                    </div>
+                    <div id="history-content" class="loading">请输入股票代码查询</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/navbar.js"></script>
+    <script>
+        // 页面加载时立即检查认证
+        (async function() {
+            const token = Auth.getToken();
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const isAuthenticated = await Auth.requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            document.body.style.display = '';
+            loadRealtimeFlow();
+        })();
+        
+        function showPanel(panelId, element) {
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(panelId).classList.add('active');
+            element.classList.add('active');
+        }
+        
+        // 排序状态
+        let sortState = {
+            column: null,
+            direction: null // 'asc' 或 'desc'
+        };
+        
+        async function loadRealtimeFlow() {
+            const content = document.getElementById('realtime-content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/realtime/capital-flow?limit=20`);
+                if (!response) return;
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    window.realtimeData = result.data;
+                    renderRealtimeTable(result.data);
+                } else {
+                    content.innerHTML = '<div class="loading">暂无数据</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        function getSortIcon(column) {
+            if (sortState.column === column) {
+                return sortState.direction === 'asc' ? '↑' : '↓';
+            }
+            return '';
+        }
+        
+        function handleSort(column) {
+            if (!window.realtimeData || window.realtimeData.length === 0) {
+                return;
+            }
+            
+            // 如果点击的是同一列，切换排序方向；否则设置为降序
+            if (sortState.column === column) {
+                sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.column = column;
+                sortState.direction = 'desc';
+            }
+            
+            // 排序数据
+            const sorted = [...window.realtimeData].sort((a, b) => {
+                let aVal, bVal;
+                
+                switch(column) {
+                    case 'stock_code':
+                        aVal = a.stock_code || '';
+                        bVal = b.stock_code || '';
+                        break;
+                    case 'stock_name':
+                        aVal = a.stock_name || '';
+                        bVal = b.stock_name || '';
+                        break;
+                    case 'current_price':
+                        aVal = a.current_price || 0;
+                        bVal = b.current_price || 0;
+                        break;
+                    case 'change_percent':
+                        aVal = a.change_percent || 0;
+                        bVal = b.change_percent || 0;
+                        break;
+                    case 'main_net_inflow':
+                        aVal = a.main_net_inflow || 0;
+                        bVal = b.main_net_inflow || 0;
+                        break;
+                    case 'super_large_net_inflow':
+                        aVal = a.super_large_net_inflow || 0;
+                        bVal = b.super_large_net_inflow || 0;
+                        break;
+                    case 'large_net_inflow':
+                        aVal = a.large_net_inflow || 0;
+                        bVal = b.large_net_inflow || 0;
+                        break;
+                    case 'medium_net_inflow':
+                        aVal = a.medium_net_inflow || 0;
+                        bVal = b.medium_net_inflow || 0;
+                        break;
+                    case 'small_net_inflow':
+                        aVal = a.small_net_inflow || 0;
+                        bVal = b.small_net_inflow || 0;
+                        break;
+                    default:
+                        return 0;
+                }
+                
+                // 字符串比较
+                if (typeof aVal === 'string') {
+                    return sortState.direction === 'asc' 
+                        ? aVal.localeCompare(bVal)
+                        : bVal.localeCompare(aVal);
+                }
+                
+                // 数字比较
+                return sortState.direction === 'asc' 
+                    ? aVal - bVal 
+                    : bVal - aVal;
+            });
+            
+            renderRealtimeTable(sorted);
+        }
+        
+        async function loadHistory() {
+            const secid = document.getElementById('stock-code-input').value.trim();
+            if (!secid) {
+                alert('请输入股票代码');
+                return;
+            }
+            
+            const content = document.getElementById('history-content');
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/stocks/${secid}/history?limit=30`);
+                if (!response) return;
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    let html = '<table><thead><tr><th>日期</th><th>收盘价</th><th>涨跌幅</th><th>主力净流入</th><th>超大单</th><th>主力占比</th><th>换手率</th><th>成交额</th></tr></thead><tbody>';
+                    
+                    result.data.forEach(item => {
+                        const changeClass = item.change_percent > 0 ? 'positive' : 'negative';
+                        html += `
+                            <tr>
+                                <td>${item.trade_date}</td>
+                                <td>${item.close_price.toFixed(2)}</td>
+                                <td class="${changeClass}">${item.change_percent.toFixed(2)}%</td>
+                                <td class="${item.main_net_inflow > 0 ? 'positive' : 'negative'}">${formatMoney(item.main_net_inflow)}</td>
+                                <td>${formatMoney(item.super_large_net_inflow || 0)}</td>
+                                <td>${(item.main_net_inflow_ratio || 0).toFixed(2)}%</td>
+                                <td>${(item.turnover_rate || 0).toFixed(2)}%</td>
+                                <td>${formatMoney(item.turnover_amount || 0)}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    content.innerHTML = html;
+                } else {
+                    content.innerHTML = '<div class="loading">暂无历史数据，请先同步数据</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function syncHistory() {
+            const secid = document.getElementById('stock-code-input').value.trim();
+            if (!secid) {
+                alert('请输入股票代码');
+                return;
+            }
+            
+            if (!confirm('确定要同步历史数据吗？这将发起网络请求，请谨慎使用。')) {
+                return;
+            }
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/sync/stock-history/${secid}`, {
+                    method: 'POST',
+                    body: JSON.stringify({limit: 250})
+                });
+                if (!response) return;
+                const result = await response.json();
+                
+                if (result.code === 0) {
+                    alert('同步成功！');
+                    loadHistory();
+                } else {
+                    alert('同步失败: ' + result.message);
+                }
+            } catch (error) {
+                alert('同步失败: ' + error.message);
+            }
+        }
+        
+        function renderRealtimeTable(data) {
+            const content = document.getElementById('realtime-content');
+            let html = '<table><thead><tr>';
+            html += `<th onclick="handleSort('stock_code')">股票代码<span class="sort-icon">${getSortIcon('stock_code')}</span></th>`;
+            html += `<th onclick="handleSort('stock_name')">股票名称<span class="sort-icon">${getSortIcon('stock_name')}</span></th>`;
+            html += `<th onclick="handleSort('current_price')">当前价<span class="sort-icon">${getSortIcon('current_price')}</span></th>`;
+            html += `<th onclick="handleSort('change_percent')">涨跌幅<span class="sort-icon">${getSortIcon('change_percent')}</span></th>`;
+            html += `<th onclick="handleSort('main_net_inflow')">主力净流入<span class="sort-icon">${getSortIcon('main_net_inflow')}</span></th>`;
+            html += `<th onclick="handleSort('super_large_net_inflow')">超大单<span class="sort-icon">${getSortIcon('super_large_net_inflow')}</span></th>`;
+            html += `<th onclick="handleSort('large_net_inflow')">大单<span class="sort-icon">${getSortIcon('large_net_inflow')}</span></th>`;
+            html += `<th onclick="handleSort('medium_net_inflow')">中单<span class="sort-icon">${getSortIcon('medium_net_inflow')}</span></th>`;
+            html += `<th onclick="handleSort('small_net_inflow')">小单<span class="sort-icon">${getSortIcon('small_net_inflow')}</span></th>`;
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(stock => {
+                const changeClass = stock.change_percent > 0 ? 'positive' : 'negative';
+                html += `
+                    <tr>
+                        <td>${stock.stock_code}</td>
+                        <td>${stock.stock_name}</td>
+                        <td>${stock.current_price.toFixed(2)}</td>
+                        <td class="${changeClass}">${stock.change_percent.toFixed(2)}%</td>
+                        <td class="${stock.main_net_inflow > 0 ? 'positive' : 'negative'}">${formatMoney(stock.main_net_inflow)}</td>
+                        <td>${formatMoney(stock.super_large_net_inflow)}</td>
+                        <td>${formatMoney(stock.large_net_inflow)}</td>
+                        <td>${formatMoney(stock.medium_net_inflow)}</td>
+                        <td>${formatMoney(stock.small_net_inflow)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
+        }
+        
+        function formatMoney(value) {
+            if (value >= 100000000) {
+                return (value / 100000000).toFixed(2) + '亿';
+            } else if (value >= 10000) {
+                return (value / 10000).toFixed(2) + '万';
+            } else {
+                return value.toFixed(2);
+            }
+        }
+        
+        // 定时刷新实时数据
+        setInterval(() => {
+            if (document.getElementById('realtime').classList.contains('active')) {
+                loadRealtimeFlow();
+            }
+        }, 30000); // 每30秒刷新一次
+    </script>
+</body>
+</html>
+

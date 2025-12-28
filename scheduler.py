@@ -6,10 +6,12 @@ import schedule
 import time
 import logging
 from services.data_collector import DataCollector
+from services.recommendation_calculator import RecommendationCalculator
 from config import SYNC_INTERVAL_MINUTES
 
 logger = logging.getLogger(__name__)
 data_collector = DataCollector()
+recommendation_calculator = RecommendationCalculator()
 
 
 def sync_all_data():
@@ -37,6 +39,16 @@ def sync_stock_list_daily():
         logger.error(f"个股列表同步失败: {e}")
 
 
+def calculate_recommendations_daily():
+    """每天计算推荐股票（收盘后执行）"""
+    logger.info("开始计算推荐股票...")
+    try:
+        recommendation_calculator.save_recommendations()
+        logger.info("推荐股票计算完成")
+    except Exception as e:
+        logger.error(f"推荐股票计算失败: {e}")
+
+
 if __name__ == '__main__':
     logging.basicConfig(
         level=logging.INFO,
@@ -49,9 +61,13 @@ if __name__ == '__main__':
     # 每天凌晨2点同步个股列表
     schedule.every().day.at("02:00").do(sync_stock_list_daily)
     
+    # 每天下午4点计算推荐股票（收盘后）
+    schedule.every().day.at("16:00").do(calculate_recommendations_daily)
+    
     logger.info("定时任务调度器启动")
     logger.info(f"指数数据同步间隔: {SYNC_INTERVAL_MINUTES}分钟")
     logger.info("个股列表同步时间: 每天02:00")
+    logger.info("推荐股票计算时间: 每天16:00（收盘后）")
     
     # 立即执行一次
     sync_all_data()

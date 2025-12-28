@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from functools import wraps
 import logging
+import requests
 from datetime import datetime
 from services.data_collector import DataCollector
 from services.health_calculator import HealthCalculator
@@ -828,6 +829,204 @@ def sync_index():
         return jsonify({'code': 0, 'message': '同步成功'})
     except Exception as e:
         logger.error(f"同步指数数据失败: {e}")
+        return jsonify({'code': -1, 'message': str(e)}), 500
+
+
+# ==================== 推荐股票API ====================
+
+@app.route('/api/recommendations/stocks', methods=['GET'])
+@require_auth
+def get_recommended_stocks():
+    """
+    获取推荐股票（从数据库读取，已预计算）
+    """
+    try:
+        import json
+        from datetime import date
+        
+        # 获取推荐日期，默认为今天
+        recommend_date_str = request.args.get('date')
+        if recommend_date_str:
+            recommend_date = datetime.strptime(recommend_date_str, '%Y-%m-%d').date()
+        else:
+            recommend_date = date.today()
+        
+        # 从数据库读取推荐股票
+        sql = """
+        SELECT recommend_date, stock_code, stock_name, secid, current_price, change_percent,
+               total_main_inflow_10d, total_small_inflow_10d, volatility, max_change, min_change,
+               recommend_reasons, sort_order
+        FROM recommended_stocks
+        WHERE recommend_date = %s
+        ORDER BY sort_order ASC
+        """
+        
+        recommendations = db.execute_query(sql, (recommend_date,))
+        
+        from decimal import Decimal
+        
+        result = []
+        for rec in recommendations:
+            # 解析推荐原因
+            reasons = []
+            if rec.get('recommend_reasons'):
+                try:
+                    reasons = json.loads(rec['recommend_reasons']) if isinstance(rec['recommend_reasons'], str) else rec['recommend_reasons']
+                except (json.JSONDecodeError, TypeError):
+                    reasons = []
+            
+            # 处理日期格式
+            recommend_date_value = rec.get('recommend_date')
+            if isinstance(recommend_date_value, date):
+                recommend_date_str = recommend_date_value.strftime('%Y-%m-%d')
+            elif isinstance(recommend_date_value, datetime):
+                recommend_date_str = recommend_date_value.strftime('%Y-%m-%d')
+            else:
+                recommend_date_str = str(recommend_date_value)
+            
+            # 处理 Decimal 类型转换
+            def to_float(value):
+                if value is None:
+                    return 0.0
+                if isinstance(value, Decimal):
+                    return float(value)
+                return float(value)
+            
+            result.append({
+                'recommend_date': recommend_date_str,
+                'stock_code': rec['stock_code'],
+                'stock_name': rec['stock_name'],
+                'secid': rec['secid'],
+                'latest_price': to_float(rec.get('current_price', 0)),
+                'latest_change': to_float(rec.get('change_percent', 0)),
+                'total_main_inflow_10d': to_float(rec.get('total_main_inflow_10d', 0)),
+                'total_small_inflow_10d': to_float(rec.get('total_small_inflow_10d', 0)),
+                'volatility': to_float(rec.get('volatility', 0)),
+                'max_change': to_float(rec.get('max_change', 0)),
+                'min_change': to_float(rec.get('min_change', 0)),
+                'reasons': reasons
+            })
+        
+        return jsonify({'code': 0, 'data': result})
+    except Exception as e:
+        logger.error(f"获取推荐股票失败: {e}")
+        return jsonify({'code': -1, 'message': str(e)}), 500
+
+
+# ==================== 智能聊天API ====================
+
+@app.route('/api/chat', methods=['POST'])
+@require_auth
+def chat():
+    """智能聊天接口，调用用户配置的 LLM"""
+    try:
+        import json
+        
+        user_id = request.current_user_id
+        data = request.get_json()
+        user_message = data.get('message', '').strip()
+        conversation_id = data.get('conversation_id', 'default')
+        
+        if not user_message:
+            return jsonify({'code': -1, 'message': '消息不能为空'}), 400
+        
+        # 获取用户启用的 LLM 配置
+        sql = """
+        SELECT provider, api_url, model, api_key 
+        FROM user_llm_configs 
+        WHERE user_id = %s AND is_enabled = 1
+        ORDER BY provider = 'deepseek' DESC, provider = 'chatgpt' DESC
+        LIMIT 1
+        """
+        llm_configs = db.execute_query(sql, (user_id,))
+        
+        if not llm_configs:
+            return jsonify({'code': -1, 'message': '请先在设置中配置并启用 LLM（DeepSeek 或 ChatGPT）'}), 400
+        
+        config = llm_configs[0]
+        provider = config['provider']
+        api_url = config['api_url']
+        model = config['model']
+        api_key = config.get('api_key', '')
+        
+        if not api_url or not model or not api_key:
+            return jsonify({'code': -1, 'message': 'LLM 配置不完整，请检查 API URL、Model 和 API Key'}), 400
+        
+        # 构建系统提示词（注入股票数据上下文）
+        system_prompt = """你是一个专业的股票资金流动分析助手。你可以帮助用户分析股票资金流向、推荐股票、解读市场趋势等。
+
+你可以访问以下数据：
+- 实时资金流向数据
+- 股票历史资金数据
+- 推荐股票列表
+- 用户关注的股票健康度
+
+请用专业、简洁的语言回答用户的问题。如果涉及具体股票，请基于数据给出客观分析。"""
+        
+        # 构建消息列表
+        messages = [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_message}
+        ]
+        
+        # 根据不同的 provider 调用不同的 API
+        if provider == 'deepseek':
+            # DeepSeek API 格式
+            chat_url = f"{api_url.rstrip('/')}/chat/completions"
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {api_key}'
+            }
+            payload = {
+                'model': model,
+                'messages': messages,
+                'temperature': 0.7,
+                'max_tokens': 2000
+            }
+        elif provider == 'chatgpt':
+            # ChatGPT/OpenAI API 格式
+            chat_url = f"{api_url.rstrip('/')}/chat/completions"
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {api_key}'
+            }
+            payload = {
+                'model': model,
+                'messages': messages,
+                'temperature': 0.7,
+                'max_tokens': 2000
+            }
+        else:
+            return jsonify({'code': -1, 'message': f'不支持的 LLM 提供商: {provider}'}), 400
+        
+        # 调用 LLM API
+        try:
+            response = requests.post(chat_url, headers=headers, json=payload, timeout=30)
+            response.raise_for_status()
+            result_data = response.json()
+            
+            # 提取回复内容
+            if 'choices' in result_data and len(result_data['choices']) > 0:
+                assistant_message = result_data['choices'][0]['message']['content']
+                return jsonify({
+                    'code': 0,
+                    'data': {
+                        'response': assistant_message,
+                        'provider': provider,
+                        'model': model
+                    }
+                })
+            else:
+                return jsonify({'code': -1, 'message': 'LLM API 返回格式异常'}), 500
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"调用 LLM API 失败: {e}")
+            return jsonify({'code': -1, 'message': f'调用 LLM API 失败: {str(e)}'}), 500
+        
+    except Exception as e:
+        logger.error(f"聊天接口失败: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'code': -1, 'message': str(e)}), 500
 
 
