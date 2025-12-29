@@ -34,7 +34,7 @@ class AuthService:
         try:
             return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
         except Exception as e:
-            logger.error(f"密码验证失败: {e}")
+            logger.error(f"Password verification failed: {e}")
             return False
     
     @staticmethod
@@ -56,10 +56,10 @@ class AuthService:
             payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
             return payload
         except jwt.ExpiredSignatureError:
-            logger.warning("Token 已过期")
+            logger.warning("Token expired")
             return None
         except jwt.InvalidTokenError as e:
-            logger.warning(f"Token 无效: {e}")
+            logger.warning(f"Invalid token: {e}")
             return None
     
     @staticmethod
@@ -101,7 +101,7 @@ class AuthService:
                     'message': '注册失败，无法获取用户信息'
                 }
         except Exception as e:
-            logger.error(f"用户注册失败: {e}")
+            logger.error(f"User registration failed: {e}")
             return {
                 'success': False,
                 'message': f'注册失败: {str(e)}'
@@ -157,7 +157,7 @@ class AuthService:
                 }
             }
         except Exception as e:
-            logger.error(f"用户登录失败: {e}")
+            logger.error(f"User login failed: {e}")
             return {
                 'success': False,
                 'message': f'登录失败: {str(e)}'
@@ -175,6 +175,6 @@ class AuthService:
             users = db.execute_query(sql, (user_id,))
             return users[0] if users else None
         except Exception as e:
-            logger.error(f"获取用户信息失败: {e}")
+            logger.error(f"Failed to get user info: {e}")
             return None
 

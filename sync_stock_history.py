@@ -21,12 +21,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: bool = False):
+def sync_stock_history(stock_limit: int = None, limit: int = 0, test_mode: bool = False, skip_synced: bool = False):
     """
     同步股票历史资金数据
     
     Args:
-        limit: 限制同步的股票数量，None表示同步全部
+        stock_limit: 限制同步的股票数量，None表示同步全部股票
+        limit: API请求的lmt参数，0表示获取所有历史记录，1表示获取最新1条，默认0
         test_mode: 测试模式，True时只同步前10只股票
         skip_synced: 是否跳过已同步的股票（检查是否有历史数据）
     """
@@ -36,11 +37,17 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
     
     if test_mode:
         print("\n[测试模式] 只同步前10只股票")
-        limit = 10
-    elif limit:
-        print(f"\n[限制模式] 只同步前 {limit} 只股票")
+        stock_limit = 10
+    elif stock_limit:
+        print(f"\n[限制模式] 只同步前 {stock_limit} 只股票")
     else:
         print("\n[完整模式] 同步所有股票")
+    
+    # API limit参数说明
+    if limit == 0:
+        print("[API参数] lmt=0，获取所有历史记录")
+    else:
+        print(f"[API参数] lmt={limit}，获取最新 {limit} 条交易数据")
     
     print("注意：每次请求后会等待1秒，避免被限流")
     print("=" * 60)
@@ -49,7 +56,7 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
     try:
         if skip_synced:
             # 跳过已同步的股票（已有历史数据的）
-            if limit:
+            if stock_limit:
                 sql = """
                 SELECT sl.stock_code, sl.market_code, sl.secid, sl.stock_name
                 FROM stock_list sl
@@ -61,7 +68,7 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
                 ORDER BY sl.stock_code
                 LIMIT %s
                 """
-                stocks = db.execute_query(sql, (limit,))
+                stocks = db.execute_query(sql, (stock_limit,))
             else:
                 sql = """
                 SELECT sl.stock_code, sl.market_code, sl.secid, sl.stock_name
@@ -74,9 +81,9 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
                 ORDER BY sl.stock_code
                 """
                 stocks = db.execute_query(sql)
-            print(f"\n[跳过模式] 将跳过已有历史数据的股票")
+            print("\n[跳过模式] 将跳过已有历史数据的股票")
         else:
-            if limit:
+            if stock_limit:
                 sql = """
                 SELECT stock_code, market_code, secid, stock_name
                 FROM stock_list
@@ -84,7 +91,7 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
                 ORDER BY stock_code
                 LIMIT %s
                 """
-                stocks = db.execute_query(sql, (limit,))
+                stocks = db.execute_query(sql, (stock_limit,))
             else:
                 sql = """
                 SELECT stock_code, market_code, secid, stock_name
@@ -93,10 +100,53 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
                 ORDER BY stock_code
                 """
                 stocks = db.execute_query(sql)
-            print(f"\n[更新模式] 已同步的股票将更新数据（使用ON DUPLICATE KEY UPDATE）")
+            print("\n[更新模式] 已同步的股票将更新数据（使用ON DUPLICATE KEY UPDATE）")
+        
+        # 确保上证指数和深证成指在列表中（默认包含，优先同步）
+        index_secids = ['1.000001', '0.399001']  # 上证指数、深证成指
+        existing_secids = {stock['secid'] for stock in stocks}
+        
+        # 如果使用跳过模式，需要检查指数是否已有历史数据
+        if skip_synced:
+            for index_secid in index_secids:
+                if index_secid not in existing_secids:
+                    # 检查指数是否有历史数据
+                    sql_check_history = """
+                    SELECT COUNT(*) as count
+                    FROM stock_capital_flow_history
+                    WHERE secid = %s
+                    """
+                    history_check = db.execute_query(sql_check_history, (index_secid,))
+                    has_history = history_check and history_check[0]['count'] > 0
+                    
+                    if not has_history:
+                        # 从数据库查询指数信息
+                        sql_index = """
+                        SELECT stock_code, market_code, secid, stock_name
+                        FROM stock_list
+                        WHERE secid = %s AND is_active = 1
+                        """
+                        index_stocks = db.execute_query(sql_index, (index_secid,))
+                        if index_stocks:
+                            stocks.insert(0, index_stocks[0])  # 插入到列表开头
+                            print(f"[信息] 添加指数到同步列表: {index_stocks[0]['stock_name']} ({index_secid})")
+        else:
+            # 更新模式：确保指数在列表中（即使已有历史数据也会更新）
+            for index_secid in index_secids:
+                if index_secid not in existing_secids:
+                    # 从数据库查询指数信息
+                    sql_index = """
+                    SELECT stock_code, market_code, secid, stock_name
+                    FROM stock_list
+                    WHERE secid = %s AND is_active = 1
+                    """
+                    index_stocks = db.execute_query(sql_index, (index_secid,))
+                    if index_stocks:
+                        stocks.insert(0, index_stocks[0])  # 插入到列表开头
+                        print(f"[信息] 添加指数到同步列表: {index_stocks[0]['stock_name']} ({index_secid})")
         
         total_stocks = len(stocks)
-        print(f"\n[信息] 找到 {total_stocks} 只股票需要同步")
+        print(f"\n[信息] 找到 {total_stocks} 只股票需要同步（包含上证指数和深证成指）")
         
         if total_stocks == 0:
             print("[错误] 数据库中没有股票数据，请先运行 init_data.py 同步股票列表")
@@ -127,8 +177,8 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
         print(f"\n[{idx}/{total_stocks}] 正在同步: {stock_code} - {stock_name} ({secid})")
         
         try:
-            # 同步历史数据（最多250天）
-            collector.sync_stock_capital_flow_history(secid, limit=250)
+            # 同步历史数据，使用limit参数（0表示获取所有记录）
+            collector.sync_stock_capital_flow_history(secid, limit=limit)
             success_count += 1
             print(f"  [成功] {stock_code} 同步完成")
             
@@ -173,48 +223,63 @@ def sync_stock_history(limit: int = None, test_mode: bool = False, skip_synced: 
 if __name__ == '__main__':
     import argparse
     
-    parser = argparse.ArgumentParser(description='同步股票历史资金数据')
-    parser.add_argument('--test', action='store_true', help='测试模式：只同步前10只股票')
-    parser.add_argument('--limit', type=int, help='限制同步的股票数量（0表示全部）')
-    parser.add_argument('--skip-synced', action='store_true', help='跳过已同步的股票（已有历史数据的）')
-    parser.add_argument('--all', action='store_true', help='同步全部股票（5499只）')
-    parser.add_argument('--yes', '-y', action='store_true', help='自动确认，跳过交互提示')
+    parser = argparse.ArgumentParser(
+        description='同步股票历史资金数据',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+使用示例:
+  # 同步所有股票的所有历史数据（默认）
+  python sync_stock_history.py
+  
+  # 只同步前10只股票的所有历史数据
+  python sync_stock_history.py --stock-limit 10
+  
+  # 同步所有股票，但API只获取最新1条数据
+  python sync_stock_history.py --limit 1
+  
+  # 测试模式：只同步前10只股票
+  python sync_stock_history.py --test
+  
+  # 跳过已同步的股票
+  python sync_stock_history.py --skip-synced
+
+API参数说明:
+  --limit 参数对应API的 lmt 参数:
+    - 0 (默认): 获取所有历史记录
+    - 1: 获取最新1条交易数据
+    - N: 获取最新N条交易数据
+        """
+    )
+    parser.add_argument('--test', action='store_true', 
+                       help='测试模式：只同步前10只股票')
+    parser.add_argument('--stock-limit', type=int, metavar='N',
+                       help='限制同步的股票数量（默认：同步所有股票）')
+    parser.add_argument('--limit', type=int, default=0, metavar='N',
+                       help='API的lmt参数：0=获取所有历史记录（默认），1=获取最新1条，N=获取最新N条')
+    parser.add_argument('--skip-synced', action='store_true', 
+                       help='跳过已同步的股票（已有历史数据的）')
+    parser.add_argument('--yes', '-y', action='store_true', 
+                       help='自动确认，跳过交互提示')
     
     args = parser.parse_args()
     
     try:
+        # 默认同步所有股票的所有历史数据
         if args.test:
-            sync_stock_history(test_mode=True, skip_synced=args.skip_synced)
-        elif args.all:
-            # 同步全部股票
-            print("\n[确认] 即将同步全部5499只股票的历史数据")
-            print("预计耗时: 约1.5-2小时（5499秒 ≈ 91分钟 + 网络请求时间）")
-            print("已同步的股票将更新数据（使用ON DUPLICATE KEY UPDATE）")
-            if not args.yes:
-                try:
-                    response = input("\n确认开始同步？(y/n): ")
-                    if response.lower() != 'y':
-                        print("已取消")
-                        sys.exit(0)
-                except (EOFError, KeyboardInterrupt):
-                    print("\n[错误] 无法读取输入，请使用 --yes 参数自动确认")
-                    sys.exit(1)
-            sync_stock_history(limit=None, skip_synced=args.skip_synced)
-        elif args.limit is not None:
-            if args.limit == 0:
-                sync_stock_history(limit=None, skip_synced=args.skip_synced)
+            sync_stock_history(stock_limit=10, limit=args.limit, 
+                             test_mode=True, skip_synced=args.skip_synced)
+        elif args.stock_limit is not None:
+            if args.stock_limit == 0:
+                # stock_limit=0 表示同步所有股票
+                sync_stock_history(stock_limit=None, limit=args.limit, 
+                                 skip_synced=args.skip_synced)
             else:
-                sync_stock_history(limit=args.limit, skip_synced=args.skip_synced)
+                sync_stock_history(stock_limit=args.stock_limit, limit=args.limit, 
+                                 skip_synced=args.skip_synced)
         else:
-            # 默认测试模式，避免误操作
-            print("[警告] 未指定模式，默认使用测试模式（只同步10只股票）")
-            print("如需同步全部股票，请使用: python sync_stock_history.py --all")
-            print("或使用: python sync_stock_history.py --limit 0")
-            response = input("\n是否继续测试模式？(y/n): ")
-            if response.lower() == 'y':
-                sync_stock_history(test_mode=True)
-            else:
-                print("已取消")
+            # 默认同步所有股票的所有历史数据
+            sync_stock_history(stock_limit=None, limit=args.limit, 
+                             skip_synced=args.skip_synced)
     except KeyboardInterrupt:
         print("\n\n[警告] 用户中断操作")
         sys.exit(1)

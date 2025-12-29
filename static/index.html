@@ -14,7 +14,8 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #fdf6e3; /* Base3 - Solarized Light */
+            color: #657b83; /* Base00 */
             min-height: 100vh;
             padding: 20px;
         }
@@ -25,15 +26,16 @@
         }
         
         .header {
-            background: white;
+            background: #eee8d5; /* Base2 */
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .header h1 {
-            color: #333;
+            color: #586e75; /* Base01 */
             margin-bottom: 10px;
         }
         
@@ -45,31 +47,33 @@
         
         .nav-tab {
             padding: 10px 20px;
-            background: #f0f0f0;
-            border: none;
+            background: #eee8d5; /* Base2 */
+            border: 1px solid #93a1a1; /* Base1 */
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
+            color: #657b83; /* Base00 */
         }
         
         .nav-tab.active {
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
         }
         
         .nav-tab:hover {
-            background: #5568d3;
-            color: white;
+            background: #2aa198; /* Cyan */
+            color: #fdf6e3; /* Base3 */
         }
         
         .content-panel {
             display: none;
-            background: white;
+            background: #eee8d5; /* Base2 */
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .content-panel.active {
@@ -77,17 +81,18 @@
         }
         
         .card {
-            background: #f8f9fa;
+            background: #eee8d5; /* Base2 */
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 15px;
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .card-title {
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #333;
+            color: #586e75; /* Base01 */
         }
         
         table {
@@ -99,25 +104,25 @@
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #ddd;
+            border-bottom: 1px solid #93a1a1; /* Base1 */
         }
         
         th {
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
             font-weight: 600;
         }
         
         tr:hover {
-            background: #f5f5f5;
+            background: #fdf6e3; /* Base3 */
         }
         
         .positive {
-            color: #e74c3c;
+            color: #dc322f; /* Red */
         }
         
         .negative {
-            color: #27ae60;
+            color: #859900; /* Green */
         }
         
         .health-score {
@@ -128,18 +133,18 @@
         }
         
         .health-high {
-            background: #27ae60;
-            color: white;
+            background: #859900; /* Green */
+            color: #fdf6e3; /* Base3 */
         }
         
         .health-medium {
-            background: #f39c12;
-            color: white;
+            background: #b58900; /* Yellow */
+            color: #fdf6e3; /* Base3 */
         }
         
         .health-low {
-            background: #e74c3c;
-            color: white;
+            background: #dc322f; /* Red */
+            color: #fdf6e3; /* Base3 */
         }
         
         .btn {
@@ -153,27 +158,27 @@
         }
         
         .btn-primary {
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
         }
         
         .btn-primary:hover {
-            background: #5568d3;
+            background: #2aa198; /* Cyan */
         }
         
         .btn-success {
-            background: #27ae60;
-            color: white;
+            background: #859900; /* Green */
+            color: #fdf6e3; /* Base3 */
         }
         
         .btn-success:hover {
-            background: #229954;
+            background: #2aa198; /* Cyan */
         }
         
         .loading {
             text-align: center;
             padding: 20px;
-            color: #666;
+            color: #93a1a1; /* Base1 */
         }
         
         .index-grid {
@@ -184,15 +189,22 @@
         }
         
         .index-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            background: #fdf6e3; /* Base3 - 浅色背景 */
+            color: #586e75; /* Base01 - 深色文字 */
             padding: 15px;
             border-radius: 8px;
+            border: 1px solid #93a1a1; /* Base1 */
+            transition: all 0.3s;
+        }
+        
+        .index-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
         }
         
         .index-name {
             font-size: 14px;
-            opacity: 0.9;
+            color: #839496; /* Base0 */
             margin-bottom: 5px;
         }
         
@@ -200,24 +212,42 @@
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 5px;
+            color: #586e75; /* Base01 */
         }
         
         .index-change {
             font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .index-change.positive {
+            color: #dc322f; /* Red - 上涨用红色 */
+        }
+        
+        .index-change.negative {
+            color: #859900; /* Green - 下跌用绿色 */
+        }
+        
+        .recommended-stocks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
         }
         
         .recommended-stock-card {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            border-left: 4px solid #667eea;
+            background: #eee8d5; /* Base2 */
+            border-left: 4px solid #268bd2; /* Blue */
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 15px;
             transition: all 0.3s;
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .recommended-stock-card:hover {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(38, 139, 210, 0.3);
             transform: translateY(-2px);
+            background: #fdf6e3; /* Base3 */
         }
         
         .recommended-stock-header {
@@ -230,18 +260,18 @@
         .recommended-stock-name {
             font-size: 18px;
             font-weight: bold;
-            color: #333;
+            color: #586e75; /* Base01 */
         }
         
         .recommended-stock-code {
             font-size: 14px;
-            color: #666;
+            color: #839496; /* Base0 */
         }
         
         .recommended-stock-price {
             font-size: 20px;
             font-weight: bold;
-            color: #667eea;
+            color: #268bd2; /* Blue */
         }
         
         .recommended-stock-info {
@@ -253,32 +283,33 @@
         }
         
         .recommended-stock-info-item {
-            background: rgba(255, 255, 255, 0.7);
+            background: #fdf6e3; /* Base3 */
             padding: 8px;
             border-radius: 5px;
+            border: 1px solid #eee8d5; /* Base2 */
         }
         
         .recommended-stock-info-label {
-            color: #666;
+            color: #839496; /* Base0 */
             font-size: 12px;
             margin-bottom: 4px;
         }
         
         .recommended-stock-info-value {
-            color: #333;
+            color: #586e75; /* Base01 */
             font-weight: 600;
         }
         
         .recommended-reasons {
             margin-top: 10px;
             padding-top: 10px;
-            border-top: 1px solid rgba(0,0,0,0.1);
+            border-top: 1px solid #93a1a1; /* Base1 */
         }
         
         .recommended-reason-tag {
             display: inline-block;
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 11px;
@@ -295,10 +326,10 @@
             <!-- 推荐股票 -->
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-title">🎯 推荐股票（大资金建仓中）</div>
-                <div style="font-size: 12px; color: #666; margin-bottom: 10px;">
+                <div style="font-size: 12px; color: #839496; margin-bottom: 10px;">
                     筛选条件：主力资金持续流入、价格震荡、散户逐步退出
                 </div>
-                <div id="recommend-date-info" style="font-size: 12px; color: #667eea; margin-bottom: 10px; font-weight: 600;"></div>
+                <div id="recommend-date-info" style="font-size: 12px; color: #268bd2; margin-bottom: 10px; font-weight: 600;"></div>
                 <button class="btn btn-primary" onclick="loadRecommendedStocks()">刷新推荐</button>
                 <div id="recommended-stocks-content" class="loading">加载中...</div>
             </div>
@@ -353,7 +384,7 @@
                         dateInfo.textContent = `📅 推荐日期：${recommendDate}`;
                     }
                     
-                    let html = '';
+                    let html = '<div class="recommended-stocks-grid">';
                     
                     result.data.forEach(stock => {
                         const changeClass = stock.latest_change > 0 ? 'positive' : 'negative';
@@ -377,13 +408,13 @@
                                 <div class="recommended-stock-info">
                                     <div class="recommended-stock-info-item">
                                         <div class="recommended-stock-info-label">10日主力流入</div>
-                                        <div class="recommended-stock-info-value" style="color: #e74c3c;">
+                                        <div class="recommended-stock-info-value" style="color: #dc322f;">
                                             ${formatMoney(stock.total_main_inflow_10d)}
                                         </div>
                                     </div>
                                     <div class="recommended-stock-info-item">
                                         <div class="recommended-stock-info-label">10日散户流出</div>
-                                        <div class="recommended-stock-info-value" style="color: #27ae60;">
+                                        <div class="recommended-stock-info-value" style="color: #859900;">
                                             ${formatMoney(Math.abs(stock.total_small_inflow_10d))}
                                         </div>
                                     </div>
@@ -406,6 +437,7 @@
                         `;
                     });
                     
+                    html += '</div>';
                     content.innerHTML = html;
                 } else {
                     const dateInfo = document.getElementById('recommend-date-info');
@@ -476,7 +508,7 @@
                 if (result.cached && !document.getElementById('cache-hint')) {
                     const cacheHint = document.createElement('div');
                     cacheHint.id = 'cache-hint';
-                    cacheHint.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 10px; padding: 8px; background: #f0f0f0; border-radius: 5px;';
+                    cacheHint.style.cssText = 'font-size: 12px; color: #839496; margin-bottom: 10px; padding: 8px; background: #eee8d5; border-radius: 5px; border: 1px solid #93a1a1;';
                     cacheHint.textContent = '⚠️ 提示：显示的是缓存数据（5分钟内），避免频繁网络请求。爬虫技术有风险，请谨慎使用。';
                     content.parentElement.insertBefore(cacheHint, content);
                 } else if (!result.cached && document.getElementById('cache-hint')) {
@@ -511,9 +543,8 @@
         }
         
         function formatMoney(value) {
-            if (value >= 100000000) {
-                return (value / 100000000).toFixed(2) + '亿';
-            } else if (value >= 10000) {
+            // 统一使用"万"为单位
+            if (value >= 10000 || value <= -10000) {
                 return (value / 10000).toFixed(2) + '万';
             } else {
                 return value.toFixed(2);

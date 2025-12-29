@@ -168,3 +168,12 @@ INSERT INTO index_data (index_code, index_name, secid) VALUES
 ('399005', '中小板指', '0.399005'),
 ('399102', '创业板综', '0.399102');
 
+-- 插入上证指数和深证成指到 stock_list 表（用于资金流向分析）
+INSERT INTO stock_list (stock_code, market_code, stock_name, secid, is_active) VALUES
+('000001', 1, '上证指数', '1.000001', 1),
+('399001', 0, '深证成指', '0.399001', 1)
+ON DUPLICATE KEY UPDATE
+    stock_name = VALUES(stock_name),
+    is_active = VALUES(is_active),
+    updated_at = NOW();
+

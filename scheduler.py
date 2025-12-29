@@ -16,7 +16,7 @@ recommendation_calculator = RecommendationCalculator()
 
 def sync_all_data():
     """同步所有数据"""
-    logger.info("开始定时同步数据...")
+    logger.info("Starting scheduled data sync...")
     try:
         # 同步指数数据
         data_collector.sync_index_data()
@@ -24,29 +24,29 @@ def sync_all_data():
         # 同步个股列表（每天只同步一次）
         # data_collector.sync_stock_list()
         
-        logger.info("数据同步完成")
+        logger.info("Data sync completed")
     except Exception as e:
-        logger.error(f"数据同步失败: {e}")
+        logger.error(f"Data sync failed: {e}")
 
 
 def sync_stock_list_daily():
     """每天同步一次个股列表"""
-    logger.info("开始同步个股列表...")
+    logger.info("Starting stock list sync...")
     try:
         data_collector.sync_stock_list()
-        logger.info("个股列表同步完成")
+        logger.info("Stock list sync completed")
     except Exception as e:
-        logger.error(f"个股列表同步失败: {e}")
+        logger.error(f"Stock list sync failed: {e}")
 
 
 def calculate_recommendations_daily():
     """每天计算推荐股票（收盘后执行）"""
-    logger.info("开始计算推荐股票...")
+    logger.info("Starting recommended stocks calculation...")
     try:
         recommendation_calculator.save_recommendations()
-        logger.info("推荐股票计算完成")
+        logger.info("Recommended stocks calculation completed")
     except Exception as e:
-        logger.error(f"推荐股票计算失败: {e}")
+        logger.error(f"Recommended stocks calculation failed: {e}")
 
 
 if __name__ == '__main__':
@@ -64,10 +64,10 @@ if __name__ == '__main__':
     # 每天下午4点计算推荐股票（收盘后）
     schedule.every().day.at("16:00").do(calculate_recommendations_daily)
     
-    logger.info("定时任务调度器启动")
-    logger.info(f"指数数据同步间隔: {SYNC_INTERVAL_MINUTES}分钟")
-    logger.info("个股列表同步时间: 每天02:00")
-    logger.info("推荐股票计算时间: 每天16:00（收盘后）")
+    logger.info("Scheduler started")
+    logger.info(f"Index data sync interval: {SYNC_INTERVAL_MINUTES} minutes")
+    logger.info("Stock list sync time: Daily at 02:00")
+    logger.info("Recommended stocks calculation time: Daily at 16:00 (after market close)")
     
     # 立即执行一次
     sync_all_data()

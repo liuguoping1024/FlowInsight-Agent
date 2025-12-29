@@ -45,14 +45,14 @@ class DataCollector:
                     'fields': 'f12,f13,f14,f26,f38,f39'
                 }
                 
-                logger.info(f"正在获取第 {page} 页股票数据...")
+                logger.info(f"Fetching page {page} stock data...")
                 response = self.session.get(url, params=params, timeout=30)
                 response.raise_for_status()
                 data = response.json()
                 
                 # 调试：打印响应结构
                 if page == 1:
-                    logger.info(f"API响应结构: rc={data.get('rc')}, data类型={type(data.get('data'))}")
+                    logger.info(f"API response structure: rc={data.get('rc')}, data type={type(data.get('data'))}")
                 
                 if data.get('rc') == 0 and 'data' in data:
                     data_obj = data['data']
@@ -62,11 +62,11 @@ class DataCollector:
                         try:
                             data_obj = json.loads(data_obj)
                         except Exception as parse_err:
-                            logger.warning(f"第 {page} 页数据解析失败: {parse_err}, 跳过")
+                            logger.warning(f"Page {page} data parsing failed: {parse_err}, skipping")
                             break
                     
                     if not isinstance(data_obj, dict):
-                        logger.error(f"第 {page} 页data不是字典类型: {type(data_obj)}")
+                        logger.error(f"Page {page} data is not dict type: {type(data_obj)}")
                         break
                     
                     page_stocks = []
@@ -79,7 +79,7 @@ class DataCollector:
                     elif isinstance(diff_data, list):
                         diff_list = diff_data
                     else:
-                        logger.error(f"第 {page} 页diff格式不正确: {type(diff_data)}")
+                        logger.error(f"Page {page} diff format incorrect: {type(diff_data)}")
                         break
                     
                     for item in diff_list:
@@ -106,37 +106,37 @@ class DataCollector:
                         break
                     
                     all_stocks.extend(page_stocks)
-                    logger.info(f"第 {page} 页获取成功，本页 {len(page_stocks)} 条，累计 {len(all_stocks)} 条")
+                    logger.info(f"Page {page} fetched successfully, {len(page_stocks)} items in this page, {len(all_stocks)} total")
                     
                     # 检查是否还有更多数据
                     total = data_obj.get('total', 0) if isinstance(data_obj, dict) else 0
                     if total > 0:
-                        logger.info(f"API返回总数: {total}, 已获取: {len(all_stocks)}")
+                        logger.info(f"API returned total: {total}, fetched: {len(all_stocks)}")
                         if len(all_stocks) >= total:
                             # 已获取全部数据
-                            logger.info(f"已获取全部 {total} 条数据")
+                            logger.info(f"Fetched all {total} items")
                             break
                     
                     # 如果本页没有数据，说明已经是最后一页
                     if len(page_stocks) == 0:
-                        logger.info("本页无数据，已获取全部数据")
+                        logger.info("No data in this page, all data fetched")
                         break
                     
                     # 等待指定时间后再请求下一页
                     if delay > 0:
-                        logger.info(f"等待 {delay} 秒后获取下一页...")
+                        logger.info(f"Waiting {delay} seconds before fetching next page...")
                         time.sleep(delay)
                     
                     page += 1
                 else:
-                    logger.warning(f"第 {page} 页获取失败，响应: {data}")
+                    logger.warning(f"Page {page} fetch failed, response: {data}")
                     break
             
-            logger.info(f"股票列表获取完成，共 {len(all_stocks)} 条")
+            logger.info(f"Stock list fetch completed, total {len(all_stocks)} items")
             return all_stocks
             
         except Exception as e:
-            logger.error(f"获取个股列表失败: {e}")
+            logger.error(f"Failed to get stock list: {e}")
             return all_stocks  # 返回已获取的数据
     
     def sync_stock_list(self, delay: float = 1.0) -> Dict:
@@ -171,7 +171,7 @@ class DataCollector:
                 'total_stocks': before_data[0]['total_stocks'] if before_data else 0
             }
         except Exception as e:
-            logger.warning(f"同步前检查失败: {e}")
+            logger.warning(f"Pre-sync check failed: {e}")
             result['before_sync'] = {'error': str(e)}
         
         # 2. 从API获取数据
@@ -224,7 +224,7 @@ class DataCollector:
         
         try:
             affected = db.execute_many(sql, params_list)
-            logger.info(f"同步个股列表成功，共 {affected} 条记录")
+            logger.info(f"Stock list sync successful, {affected} records")
             
             # 5. 同步后检查：查询更新后的股票数量
             sql_after = """
@@ -241,7 +241,7 @@ class DataCollector:
             result['message'] = f'同步成功，新增 {result["sync_stats"]["new_stocks"]} 只，更新 {result["sync_stats"]["updated_stocks"]} 只'
             
         except Exception as e:
-            logger.error(f"同步个股列表失败: {e}")
+            logger.error(f"Stock list sync failed: {e}")
             result['message'] = f'同步失败: {str(e)}'
             result['success'] = False
         
@@ -301,7 +301,7 @@ class DataCollector:
                 return results
             return []
         except Exception as e:
-            logger.error(f"获取实时资金流向失败: {e}")
+            logger.error(f"Failed to get realtime capital flow: {e}")
             return []
     
     def get_stock_capital_flow_history(self, secid: str, limit: int = 250) -> List[Dict]:
@@ -390,13 +390,13 @@ class DataCollector:
                             'raw_data': raw_data_json
                         })
                     except (ValueError, IndexError) as e:
-                        logger.warning(f"解析历史数据失败: {e}, 数据: {kline_str}")
+                        logger.warning(f"Failed to parse history data: {e}, data: {kline_str}")
                         continue
                 
                 return results
             return []
         except Exception as e:
-            logger.error(f"获取个股历史资金数据失败: {e}, secid: {secid}")
+            logger.error(f"Failed to get stock history capital flow data: {e}, secid: {secid}")
             return []
     
     def sync_stock_capital_flow_history(self, secid: str, limit: int = 250) -> Dict:
@@ -442,7 +442,7 @@ class DataCollector:
                     'total_records': 0
                 }
         except Exception as e:
-            logger.warning(f"同步前检查失败: {e}")
+            logger.warning(f"Pre-sync check failed: {e}")
             result['before_sync'] = {'error': str(e)}
         
         # 2. 从API获取数据
@@ -514,7 +514,7 @@ class DataCollector:
         
         try:
             affected = db.execute_many(sql, params_list)
-            logger.info(f"同步历史资金数据成功，secid: {secid}, 共 {affected} 条记录")
+            logger.info(f"History capital flow data sync successful, secid: {secid}, {affected} records")
             
             # 5. 同步后检查：查询更新后的数据范围
             sql_after = """
@@ -537,7 +537,7 @@ class DataCollector:
             result['message'] = f'同步成功，新增 {result["sync_stats"]["new_days"]} 天，更新 {result["sync_stats"]["updated_days"]} 天'
             
         except Exception as e:
-            logger.error(f"同步历史资金数据失败: {e}")
+            logger.error(f"History capital flow data sync failed: {e}")
             result['message'] = f'同步失败: {str(e)}'
             result['success'] = False
         
@@ -591,14 +591,14 @@ class DataCollector:
                 return results
             return []
         except Exception as e:
-            logger.error(f"获取指数数据失败: {e}")
+            logger.error(f"Failed to get index data: {e}")
             return []
     
     def sync_index_data(self):
         """同步指数数据到数据库"""
         index_data = self.get_index_data()
         if not index_data:
-            logger.warning("未获取到指数数据")
+            logger.warning("No index data retrieved")
             return
         
         sql = """
@@ -628,7 +628,7 @@ class DataCollector:
         
         try:
             affected = db.execute_many(sql, params_list)
-            logger.info(f"同步指数数据成功，共 {affected} 条记录")
+            logger.info(f"Index data sync successful, {affected} records")
         except Exception as e:
-            logger.error(f"同步指数数据到数据库失败: {e}")
+            logger.error(f"Failed to sync index data to database: {e}")
 

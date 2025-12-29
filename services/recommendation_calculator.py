@@ -28,7 +28,7 @@ class RecommendationCalculator:
         if recommend_date is None:
             recommend_date = date.today()
         
-        logger.info(f"开始计算 {recommend_date} 的推荐股票...")
+        logger.info(f"Starting to calculate recommended stocks for {recommend_date}...")
         
         # 获取所有有历史数据的股票（至少要有最近N天的数据，但考虑到周末和节假日，实际交易日可能少于N天）
         # 使用最近N个交易日，而不是最近N个自然日
@@ -48,7 +48,7 @@ class RecommendationCalculator:
         min_trade_days = max(6, int(days * 0.6))  # 至少60%的交易日
         
         stocks = db.execute_query(sql_stocks, (recommend_date, days, recommend_date, min_trade_days))
-        logger.info(f"找到 {len(stocks)} 只有历史数据的股票（至少{min_trade_days}个交易日）")
+        logger.info(f"Found {len(stocks)} stocks with historical data (at least {min_trade_days} trading days)")
         
         result = []
         for stock in stocks:
@@ -94,18 +94,21 @@ class RecommendationCalculator:
             else:
                 volatility = 0
             
+            # 获取最新数据
+            latest = history[0] if history else {}
+            current_price = to_float(latest.get('close_price', 0))
+            
             # 筛选条件：
             # 1. 主力净流入累计 > 5000万（大资金建仓，但不要太明显，< 5亿）
             # 2. 涨跌幅在-8%到8%之间（震荡）
             # 3. 小单净流入累计 < 0（散户退出）
             # 4. 波动率 > 1%（有一定震荡）
+            # 5. 当前价格 < 100元（价格适中，普通投资者可承受）
             if (50000000 <= total_main_inflow < 500000000 and  # 主力建仓，但不太明显
                 -8 <= max_change <= 8 and -8 <= min_change <= 8 and  # 震荡区间
                 total_small_inflow < 0 and  # 散户退出
-                volatility > 1.0):  # 有一定波动
-                
-                # 获取最新数据
-                latest = history[0] if history else {}
+                volatility > 1.0 and  # 有一定波动
+                current_price > 0 and current_price < 100):  # 价格在100元以下
                 
                 # 计算推荐理由
                 reasons = []
@@ -123,7 +126,7 @@ class RecommendationCalculator:
                     'stock_name': stock['stock_name'],
                     'secid': secid,
                     'market_code': stock['market_code'],
-                    'current_price': to_float(latest.get('close_price', 0)),
+                    'current_price': current_price,
                     'change_percent': to_float(latest.get('change_percent', 0)),
                     'total_main_inflow_10d': total_main_inflow,
                     'total_small_inflow_10d': total_small_inflow,
@@ -136,7 +139,7 @@ class RecommendationCalculator:
         # 按主力净流入排序
         result.sort(key=lambda x: x['total_main_inflow_10d'], reverse=True)
         
-        logger.info(f"计算出 {len(result)} 只符合条件的推荐股票")
+        logger.info(f"Calculated {len(result)} qualified recommended stocks")
         return result[:limit]
     
     def save_recommendations(self, recommend_date: date = None, days: int = 10, limit: int = 10):
@@ -154,13 +157,13 @@ class RecommendationCalculator:
         # 先删除当天的旧推荐
         sql_delete = "DELETE FROM recommended_stocks WHERE recommend_date = %s"
         db.execute_update(sql_delete, (recommend_date,))
-        logger.info(f"已删除 {recommend_date} 的旧推荐")
+        logger.info(f"Deleted old recommendations for {recommend_date}")
         
         # 计算推荐股票
         recommendations = self.calculate_recommendations(recommend_date, days, limit)
         
         if not recommendations:
-            logger.warning(f"{recommend_date} 没有符合条件的推荐股票")
+            logger.warning(f"No qualified recommended stocks found for {recommend_date}")
             return
         
         # 保存到数据库
@@ -193,5 +196,5 @@ class RecommendationCalculator:
                 idx + 1  # 排序顺序
             ))
         
-        logger.info(f"成功保存 {len(recommendations)} 只推荐股票到数据库")
+        logger.info(f"Successfully saved {len(recommendations)} recommended stocks to database")
 

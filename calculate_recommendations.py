@@ -19,11 +19,11 @@ if __name__ == '__main__':
     
     # 计算今天的推荐股票
     recommend_date = date.today()
-    logger.info(f"开始计算 {recommend_date} 的推荐股票...")
+    logger.info(f"Starting to calculate recommended stocks for {recommend_date}...")
     
     try:
         calculator.save_recommendations(recommend_date=recommend_date, days=10, limit=10)
-        logger.info("推荐股票计算完成！")
+        logger.info("Recommended stocks calculation completed!")
     except Exception as e:
-        logger.error(f"计算失败: {e}", exc_info=True)
+        logger.error(f"Calculation failed: {e}", exc_info=True)
 

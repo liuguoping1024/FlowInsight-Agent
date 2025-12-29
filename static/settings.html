@@ -16,11 +16,12 @@
         
         .settings-sidebar {
             width: 250px;
-            background: white;
+            background: #eee8d5; /* Base2 */
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             height: fit-content;
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .settings-menu-item {
@@ -32,23 +33,25 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            color: #657b83; /* Base00 */
         }
         
         .settings-menu-item:hover {
-            background: #f0f0f0;
+            background: #fdf6e3; /* Base3 */
         }
         
         .settings-menu-item.active {
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
         }
         
         .settings-content {
             flex: 1;
-            background: white;
+            background: #eee8d5; /* Base2 */
             border-radius: 10px;
             padding: 30px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .settings-section {
@@ -63,7 +66,7 @@
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 30px;
-            color: #333;
+            color: #586e75; /* Base01 */
         }
         
         .form-group {
@@ -74,20 +77,22 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
-            color: #333;
+            color: #586e75; /* Base01 */
         }
         
         .form-input {
             width: 100%;
             padding: 10px;
-            border: 1px solid #ddd;
+            border: 1px solid #93a1a1; /* Base1 */
             border-radius: 5px;
             font-size: 14px;
+            background: #fdf6e3; /* Base3 */
+            color: #657b83; /* Base00 */
         }
         
         .form-input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #268bd2; /* Blue */
         }
         
         .form-input.password {
@@ -132,7 +137,7 @@
         }
         
         input:checked + .toggle-slider {
-            background-color: #667eea;
+            background-color: #268bd2; /* Blue */
         }
         
         input:checked + .toggle-slider:before {
@@ -141,8 +146,8 @@
         
         .btn-save {
             padding: 10px 24px;
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -150,7 +155,7 @@
         }
         
         .btn-save:hover {
-            background: #5568d3;
+            background: #2aa198; /* Cyan */
         }
         
         .stock-list-table {
@@ -163,18 +168,23 @@
         .stock-list-table td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid #93a1a1; /* Base1 */
         }
         
         .stock-list-table th {
-            background: #f8f9fa;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
             font-weight: 600;
+        }
+        
+        .stock-list-table tr:hover {
+            background: #fdf6e3; /* Base3 */
         }
         
         .btn-add {
             padding: 8px 16px;
-            background: #28a745;
-            color: white;
+            background: #859900; /* Green */
+            color: #fdf6e3; /* Base3 */
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -182,14 +192,22 @@
             margin-bottom: 20px;
         }
         
+        .btn-add:hover {
+            background: #2aa198; /* Cyan */
+        }
+        
         .btn-delete {
             padding: 4px 12px;
-            background: #dc3545;
-            color: white;
+            background: #dc322f; /* Red */
+            color: #fdf6e3; /* Base3 */
             border: none;
             border-radius: 3px;
             cursor: pointer;
             font-size: 12px;
+        }
+        
+        .btn-delete:hover {
+            background: #cb4b16; /* Orange */
         }
         
         .theme-option {
@@ -197,24 +215,179 @@
             align-items: center;
             gap: 10px;
             padding: 12px;
-            border: 2px solid #ddd;
+            border: 2px solid #93a1a1; /* Base1 */
             border-radius: 5px;
             margin-bottom: 10px;
             cursor: pointer;
             transition: all 0.3s;
+            background: #fdf6e3; /* Base3 */
         }
         
         .theme-option:hover {
-            border-color: #667eea;
+            border-color: #268bd2; /* Blue */
         }
         
         .theme-option.selected {
-            border-color: #667eea;
-            background: #f0f4ff;
+            border-color: #268bd2; /* Blue */
+            background: #eee8d5; /* Base2 */
         }
         
         .theme-option input[type="radio"] {
             margin: 0;
+        }
+        
+        /* 模态对话框样式 - Solarized Light */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-overlay.show {
+            display: flex;
+        }
+        
+        .modal {
+            background: #eee8d5; /* Base2 */
+            border-radius: 10px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: 1px solid #93a1a1; /* Base1 */
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #93a1a1; /* Base1 */
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #586e75; /* Base01 */
+            margin: 0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #839496; /* Base0 */
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        
+        .modal-close:hover {
+            background: #fdf6e3; /* Base3 */
+            color: #dc322f; /* Red */
+        }
+        
+        .modal-body {
+            margin-bottom: 20px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            padding-top: 15px;
+            border-top: 1px solid #93a1a1; /* Base1 */
+        }
+        
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #93a1a1; /* Base1 */
+            border-radius: 5px;
+            font-size: 14px;
+            background: #fdf6e3; /* Base3 */
+            color: #657b83; /* Base00 */
+            box-sizing: border-box;
+        }
+        
+        .modal-input:focus {
+            outline: none;
+            border-color: #268bd2; /* Blue */
+        }
+        
+        .modal-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #586e75; /* Base01 */
+        }
+        
+        .modal-label .optional {
+            color: #839496; /* Base0 */
+            font-weight: normal;
+            font-size: 12px;
+        }
+        
+        .modal-select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #93a1a1; /* Base1 */
+            border-radius: 5px;
+            font-size: 14px;
+            background: #fdf6e3; /* Base3 */
+            color: #657b83; /* Base00 */
+            cursor: pointer;
+        }
+        
+        .modal-select:focus {
+            outline: none;
+            border-color: #268bd2; /* Blue */
+        }
+        
+        .btn-modal-primary {
+            padding: 10px 24px;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-modal-primary:hover {
+            background: #2aa198; /* Cyan */
+        }
+        
+        .btn-modal-cancel {
+            padding: 10px 24px;
+            background: #eee8d5; /* Base2 */
+            color: #657b83; /* Base00 */
+            border: 1px solid #93a1a1; /* Base1 */
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn-modal-cancel:hover {
+            background: #fdf6e3; /* Base3 */
         }
     </style>
 </head>
@@ -381,6 +554,80 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加持股对话框 -->
+    <div id="holding-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">添加持股记录</h3>
+                <button class="modal-close" onclick="closeHoldingModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="modal-label">股票代码 <span style="color: #dc322f;">*</span></label>
+                    <input type="text" class="modal-input" id="holding-stock-code" placeholder="如：000001" required>
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">股票名称 <span class="optional">(可选)</span></label>
+                    <input type="text" class="modal-input" id="holding-stock-name" placeholder="如：平安银行">
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">市场 <span style="color: #dc322f;">*</span></label>
+                    <select class="modal-select" id="holding-market-code">
+                        <option value="0">深市</option>
+                        <option value="1">沪市</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">持股数量 <span style="color: #dc322f;">*</span></label>
+                    <input type="number" class="modal-input" id="holding-quantity" placeholder="如：1000" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">持股价格 <span style="color: #dc322f;">*</span></label>
+                    <input type="number" class="modal-input" id="holding-price" placeholder="如：10.50" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">持股开始日期 <span style="color: #dc322f;">*</span></label>
+                    <input type="date" class="modal-input" id="holding-start-date" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" onclick="closeHoldingModal()">取消</button>
+                <button class="btn-modal-primary" onclick="submitHolding()">确定</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 添加收藏对话框 -->
+    <div id="favorite-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">添加收藏记录</h3>
+                <button class="modal-close" onclick="closeFavoriteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="modal-label">股票代码 <span style="color: #dc322f;">*</span></label>
+                    <input type="text" class="modal-input" id="favorite-stock-code" placeholder="如：000001" required>
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">股票名称 <span class="optional">(可选)</span></label>
+                    <input type="text" class="modal-input" id="favorite-stock-name" placeholder="如：平安银行">
+                </div>
+                <div class="form-group">
+                    <label class="modal-label">市场 <span style="color: #dc322f;">*</span></label>
+                    <select class="modal-select" id="favorite-market-code">
+                        <option value="0">深市</option>
+                        <option value="1">沪市</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal-cancel" onclick="closeFavoriteModal()">取消</button>
+                <button class="btn-modal-primary" onclick="submitFavorite()">确定</button>
             </div>
         </div>
     </div>
@@ -661,29 +908,129 @@
             content.innerHTML = html;
         }
         
-        window.showAddHoldingModal = async function() {
-            const stockCode = prompt('请输入股票代码（如：000001）:');
-            if (!stockCode) return;
+        // 股票代码查询函数（防抖处理）
+        let stockLookupTimer = null;
+        
+        window.lookupStock = async function(stockCode, isHolding) {
+            // 清除之前的定时器
+            if (stockLookupTimer) {
+                clearTimeout(stockLookupTimer);
+            }
             
-            const stockName = prompt('请输入股票名称（可选）:') || '';
-            const quantity = prompt('请输入持股数量:');
-            if (!quantity || isNaN(quantity)) {
+            // 防抖：等待用户停止输入500ms后再查询
+            stockLookupTimer = setTimeout(async () => {
+                if (!stockCode || stockCode.length !== 6 || !/^\d{6}$/.test(stockCode)) {
+                    return; // 不是6位数字，不查询
+                }
+                
+                try {
+                    const response = await Auth.authFetch(`${API_BASE}/stocks/lookup?stock_code=${encodeURIComponent(stockCode)}`);
+                    if (!response) return;
+                    
+                    const result = await response.json();
+                    if (result.code === 0 && result.data) {
+                        const stockData = result.data;
+                        
+                        if (isHolding) {
+                            // 填充持股表单
+                            document.getElementById('holding-stock-name').value = stockData.stock_name || '';
+                            document.getElementById('holding-market-code').value = stockData.market_code || '0';
+                        } else {
+                            // 填充收藏表单
+                            document.getElementById('favorite-stock-name').value = stockData.stock_name || '';
+                            document.getElementById('favorite-market-code').value = stockData.market_code || '0';
+                        }
+                    } else {
+                        // 未找到股票，清空自动填充的字段
+                        if (isHolding) {
+                            document.getElementById('holding-stock-name').value = '';
+                            document.getElementById('holding-market-code').value = '0';
+                        } else {
+                            document.getElementById('favorite-stock-name').value = '';
+                            document.getElementById('favorite-market-code').value = '0';
+                        }
+                    }
+                } catch (error) {
+                    console.error('查询股票信息失败:', error);
+                }
+            }, 500);
+        }
+        
+        window.showAddHoldingModal = function() {
+            const modal = document.getElementById('holding-modal');
+            modal.classList.add('show');
+            
+            // 清空表单
+            const stockCodeInput = document.getElementById('holding-stock-code');
+            stockCodeInput.value = '';
+            document.getElementById('holding-stock-name').value = '';
+            document.getElementById('holding-market-code').value = '0';
+            document.getElementById('holding-quantity').value = '';
+            document.getElementById('holding-price').value = '';
+            
+            // 设置默认日期为今天
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('holding-start-date').value = today;
+            
+            // 添加股票代码输入监听器（移除旧的，添加新的）
+            stockCodeInput.removeEventListener('input', holdingStockCodeHandler);
+            holdingStockCodeHandler = function(e) {
+                const code = e.target.value.trim();
+                lookupStock(code, true);
+            };
+            stockCodeInput.addEventListener('input', holdingStockCodeHandler);
+        }
+        
+        let holdingStockCodeHandler = null;
+        let favoriteStockCodeHandler = null;
+        
+        window.closeHoldingModal = function() {
+            const modal = document.getElementById('holding-modal');
+            modal.classList.remove('show');
+        }
+        
+        window.submitHolding = async function() {
+            const stockCode = document.getElementById('holding-stock-code').value.trim();
+            const stockName = document.getElementById('holding-stock-name').value.trim();
+            const marketCode = parseInt(document.getElementById('holding-market-code').value);
+            const quantity = document.getElementById('holding-quantity').value.trim();
+            const price = document.getElementById('holding-price').value.trim();
+            const startDate = document.getElementById('holding-start-date').value;
+            
+            // 验证必填字段
+            if (!stockCode) {
+                alert('请输入股票代码');
+                return;
+            }
+            if (!quantity || isNaN(quantity) || parseInt(quantity) <= 0) {
                 alert('请输入有效的持股数量');
                 return;
             }
+            if (!price || isNaN(price) || parseFloat(price) <= 0) {
+                alert('请输入有效的持股价格');
+                return;
+            }
+            if (!startDate) {
+                alert('请选择持股开始日期');
+                return;
+            }
             
-            const cost = prompt('请输入持仓成本（可选，直接回车跳过）:') || '0';
-            const marketCode = confirm('是否深市股票？\n确定=深市(0)，取消=沪市(1)') ? 0 : 1;
+            // 计算持仓成本（数量 * 价格）
+            const holdingCost = parseFloat(quantity) * parseFloat(price);
+            
+            // 构建备注信息（包含开始日期）
+            const notes = `持股开始日期: ${startDate}${stockName ? `, 股票名称: ${stockName}` : ''}`;
             
             try {
                 const response = await Auth.authFetch(`${API_BASE}/settings/holdings`, {
                     method: 'POST',
                     body: JSON.stringify({
-                        stock_code: stockCode.trim(),
+                        stock_code: stockCode,
                         stock_market: marketCode,
-                        stock_name: stockName.trim(),
+                        stock_name: stockName,
                         holding_quantity: parseInt(quantity),
-                        holding_cost: parseFloat(cost) || 0
+                        holding_cost: holdingCost,
+                        notes: notes
                     })
                 });
                 
@@ -691,6 +1038,7 @@
                     const result = await response.json();
                     if (result.code === 0) {
                         alert('添加成功！');
+                        closeHoldingModal();
                         window.loadHoldings();
                     } else {
                         alert('添加失败: ' + result.message);
@@ -701,20 +1049,48 @@
             }
         }
         
-        window.showAddFavoriteModal = async function() {
-            const stockCode = prompt('请输入股票代码（如：000001）:');
-            if (!stockCode) return;
+        window.showAddFavoriteModal = function() {
+            const modal = document.getElementById('favorite-modal');
+            modal.classList.add('show');
             
-            const stockName = prompt('请输入股票名称（可选）:') || '';
-            const marketCode = confirm('是否深市股票？\n确定=深市(0)，取消=沪市(1)') ? 0 : 1;
+            // 清空表单
+            const stockCodeInput = document.getElementById('favorite-stock-code');
+            stockCodeInput.value = '';
+            document.getElementById('favorite-stock-name').value = '';
+            document.getElementById('favorite-market-code').value = '0';
+            
+            // 添加股票代码输入监听器（移除旧的，添加新的）
+            stockCodeInput.removeEventListener('input', favoriteStockCodeHandler);
+            favoriteStockCodeHandler = function(e) {
+                const code = e.target.value.trim();
+                lookupStock(code, false);
+            };
+            stockCodeInput.addEventListener('input', favoriteStockCodeHandler);
+        }
+        
+        window.closeFavoriteModal = function() {
+            const modal = document.getElementById('favorite-modal');
+            modal.classList.remove('show');
+        }
+        
+        window.submitFavorite = async function() {
+            const stockCode = document.getElementById('favorite-stock-code').value.trim();
+            const stockName = document.getElementById('favorite-stock-name').value.trim();
+            const marketCode = parseInt(document.getElementById('favorite-market-code').value);
+            
+            // 验证必填字段
+            if (!stockCode) {
+                alert('请输入股票代码');
+                return;
+            }
             
             try {
                 const response = await Auth.authFetch(`${API_BASE}/settings/favorites`, {
                     method: 'POST',
                     body: JSON.stringify({
-                        stock_code: stockCode.trim(),
+                        stock_code: stockCode,
                         stock_market: marketCode,
-                        stock_name: stockName.trim()
+                        stock_name: stockName
                     })
                 });
                 
@@ -722,6 +1098,7 @@
                     const result = await response.json();
                     if (result.code === 0) {
                         alert('添加成功！');
+                        closeFavoriteModal();
                         window.loadFavorites();
                     } else {
                         alert('添加失败: ' + result.message);
@@ -775,6 +1152,26 @@
                 alert('删除失败: ' + error.message);
             }
         };
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', function(event) {
+            const holdingModal = document.getElementById('holding-modal');
+            const favoriteModal = document.getElementById('favorite-modal');
+            if (event.target === holdingModal) {
+                closeHoldingModal();
+            }
+            if (event.target === favoriteModal) {
+                closeFavoriteModal();
+            }
+        });
+        
+        // ESC键关闭模态框
+        window.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeHoldingModal();
+                closeFavoriteModal();
+            }
+        });
         
         // 页面加载时检查认证
         (async function() {

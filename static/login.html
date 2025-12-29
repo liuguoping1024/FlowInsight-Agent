@@ -13,7 +13,8 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #fdf6e3; /* Base3 - Solarized Light */
+            color: #657b83; /* Base00 */
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -22,12 +23,13 @@
         }
         
         .login-container {
-            background: white;
+            background: #eee8d5; /* Base2 */
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             width: 100%;
             max-width: 400px;
+            border: 1px solid #93a1a1; /* Base1 */
         }
         
         .login-header {
@@ -36,12 +38,12 @@
         }
         
         .login-header h1 {
-            color: #333;
+            color: #586e75; /* Base01 */
             margin-bottom: 10px;
         }
         
         .login-header p {
-            color: #666;
+            color: #839496; /* Base0 */
             font-size: 14px;
         }
         
@@ -52,29 +54,31 @@
         .form-group label {
             display: block;
             margin-bottom: 8px;
-            color: #333;
+            color: #586e75; /* Base01 */
             font-weight: 500;
         }
         
         .form-group input {
             width: 100%;
             padding: 12px;
-            border: 1px solid #ddd;
+            border: 1px solid #93a1a1; /* Base1 */
             border-radius: 5px;
             font-size: 14px;
             transition: border-color 0.3s;
+            background: #fdf6e3; /* Base3 */
+            color: #657b83; /* Base00 */
         }
         
         .form-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #268bd2; /* Blue */
         }
         
         .btn {
             width: 100%;
             padding: 12px;
-            background: #667eea;
-            color: white;
+            background: #268bd2; /* Blue */
+            color: #fdf6e3; /* Base3 */
             border: none;
             border-radius: 5px;
             font-size: 16px;
@@ -84,22 +88,23 @@
         }
         
         .btn:hover {
-            background: #5568d3;
+            background: #2aa198; /* Cyan */
         }
         
         .btn:disabled {
-            background: #ccc;
+            background: #93a1a1; /* Base1 */
             cursor: not-allowed;
         }
         
         .error-message {
-            background: #fee;
-            color: #c33;
+            background: #fdf6e3; /* Base3 */
+            color: #dc322f; /* Red */
             padding: 10px;
             border-radius: 5px;
             margin-bottom: 20px;
             font-size: 14px;
             display: none;
+            border: 1px solid #dc322f; /* Red */
         }
         
         .error-message.show {
@@ -110,16 +115,17 @@
             text-align: center;
             margin-top: 20px;
             font-size: 14px;
-            color: #666;
+            color: #839496; /* Base0 */
         }
         
         .register-link a {
-            color: #667eea;
+            color: #268bd2; /* Blue */
             text-decoration: none;
         }
         
         .register-link a:hover {
             text-decoration: underline;
+            color: #2aa198; /* Cyan */
         }
     </style>
 </head>

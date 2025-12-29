@@ -229,9 +229,8 @@
         }
         
         function formatMoney(value) {
-            if (value >= 100000000) {
-                return (value / 100000000).toFixed(2) + '亿';
-            } else if (value >= 10000) {
+            // 统一使用"万"为单位
+            if (value >= 10000 || value <= -10000) {
                 return (value / 10000).toFixed(2) + '万';
             } else {
                 return value.toFixed(2);

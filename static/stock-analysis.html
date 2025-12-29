@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票资金分析 - FlowInsight</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stock-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .stock-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stock-search input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+        
+        .stock-search button {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .stock-search button:hover {
+            background: #5568d3;
+        }
+        
+        .stock-selector select {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            min-width: 200px;
+            cursor: pointer;
+        }
+        
+        .description-text {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+            padding: 0 20px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 20px;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+    </style>
+</head>
+<body style="display: none;">
+    <div id="app">
+        <nav-bar></nav-bar>
+        
+        <div class="container">
+            <!-- 股票资金分析 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📊 股票资金分析</div>
+                    <div class="stock-selector">
+                        <div class="stock-search">
+                            <input type="text" id="stock-search-input" placeholder="输入股票代码或名称" onkeypress="if(event.key==='Enter') searchStock()">
+                            <button onclick="searchStock()">查询</button>
+                        </div>
+                        <select id="stock-selector" onchange="loadStockHistory()">
+                            <option value="">请选择股票或指数...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="stock-charts-content">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+            <div class="description-text">
+                选择股票或指数，查看最近60个交易日（90天内）的资金流向数据<br>
+                <span style="color: #999;">默认包含：上证指数、深证成指 + 您持股的股票</span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/navbar.js"></script>
+    <script>
+        // 页面加载时立即检查认证
+        (async function() {
+            const token = Auth.getToken();
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const isAuthenticated = await Auth.requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            document.body.style.display = '';
+            loadStockSelector();
+        })();
+        
+        let barChart = null;
+        let lineChart = null;
+        let cumulativeChart = null;
+        let stockList = []; // 保存股票列表用于搜索
+        
+        async function loadStockSelector() {
+            const selector = document.getElementById('stock-selector');
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/dashboard/holdings`);
+                if (!response) return;
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    // 保存股票列表用于搜索
+                    stockList = result.data;
+                    
+                    selector.innerHTML = '<option value="">请选择股票或指数...</option>';
+                    let defaultSecid = null; // 默认选中的secid（上证指数）
+                    
+                    result.data.forEach(stock => {
+                        const option = document.createElement('option');
+                        option.value = stock.secid;
+                        // 如果是指数，添加标识
+                        const displayName = stock.is_index 
+                            ? `📈 ${stock.stock_code} ${stock.stock_name || ''}`
+                            : `${stock.stock_code} ${stock.stock_name || ''}`;
+                        option.textContent = displayName;
+                        selector.appendChild(option);
+                        
+                        // 找到上证指数（secid: 1.000001）作为默认选中
+                        if (stock.secid === '1.000001') {
+                            defaultSecid = stock.secid;
+                        }
+                    });
+                    
+                    // 如果找到上证指数，设置为默认选中并自动加载数据
+                    if (defaultSecid) {
+                        selector.value = defaultSecid;
+                        // 自动加载上证指数的数据
+                        await loadStockHistory();
+                    }
+                } else {
+                    // 即使没有持股，也应该有上证指数和深证成指
+                    selector.innerHTML = '<option value="">加载中...</option>';
+                }
+            } catch (error) {
+                console.error('加载股票列表失败:', error);
+                selector.innerHTML = '<option value="">加载失败</option>';
+            }
+        }
+        
+        async function loadStockHistory(secid = null) {
+            const selector = document.getElementById('stock-selector');
+            const targetSecid = secid || selector.value;
+            const content = document.getElementById('stock-charts-content');
+            
+            if (!targetSecid) {
+                content.innerHTML = '<div class="loading">请先选择股票</div>';
+                // 销毁现有图表
+                if (barChart) {
+                    barChart.destroy();
+                    barChart = null;
+                }
+                if (cumulativeChart) {
+                    cumulativeChart.destroy();
+                    cumulativeChart = null;
+                }
+                if (lineChart) {
+                    lineChart.destroy();
+                    lineChart = null;
+                }
+                return;
+            }
+            
+            // 如果通过secid加载，更新下拉框选中状态
+            if (secid) {
+                selector.value = secid;
+            }
+            
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/stocks/${encodeURIComponent(targetSecid)}/history?limit=60&days=90`);
+                if (!response) return;
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    renderCharts(result.data);
+                } else {
+                    content.innerHTML = '<div class="loading">暂无数据</div>';
+                }
+            } catch (error) {
+                content.innerHTML = `<div class="loading" style="color: red;">加载失败: ${error.message}</div>`;
+            }
+        }
+        
+        async function searchStock() {
+            const searchInput = document.getElementById('stock-search-input');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                alert('请输入股票代码或股票名称');
+                return;
+            }
+            
+            // 先从本地股票列表搜索（快速匹配）
+            let matchedStock = stockList.find(stock => {
+                const code = stock.stock_code || '';
+                const name = stock.stock_name || '';
+                const queryLower = query.toLowerCase();
+                return code.toLowerCase() === queryLower || 
+                       name.toLowerCase() === queryLower ||
+                       code === query ||
+                       name === query ||
+                       name.toLowerCase().includes(queryLower) ||
+                       code.includes(query);
+            });
+            
+            // 如果本地没找到，从数据库搜索
+            if (!matchedStock) {
+                try {
+                    // 使用普通fetch，因为/api/stocks不需要认证
+                    const response = await fetch(`${API_BASE}/stocks?keyword=${encodeURIComponent(query)}&page_size=20`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.code === 0 && result.data && result.data.length > 0) {
+                        // 优先精确匹配（代码或名称完全匹配）
+                        matchedStock = result.data.find(stock => {
+                            const code = (stock.stock_code || '').trim();
+                            const name = (stock.stock_name || '').trim();
+                            return code === query || name === query;
+                        });
+                        
+                        // 如果没有精确匹配，尝试大小写不敏感的匹配
+                        if (!matchedStock) {
+                            matchedStock = result.data.find(stock => {
+                                const code = (stock.stock_code || '').trim();
+                                const name = (stock.stock_name || '').trim();
+                                const queryLower = query.toLowerCase();
+                                return code.toLowerCase() === queryLower || 
+                                       name.toLowerCase() === queryLower;
+                            });
+                        }
+                        
+                        // 如果还是没有精确匹配，使用第一个结果（模糊匹配的结果）
+                        if (!matchedStock) {
+                            matchedStock = result.data[0];
+                        }
+                    }
+                } catch (error) {
+                    console.error('搜索股票失败:', error);
+                }
+            }
+            
+            if (matchedStock) {
+                // 找到匹配的股票，加载数据
+                await loadStockHistory(matchedStock.secid);
+            } else {
+                // 未找到匹配的股票
+                alert(`未找到股票代码或名称为"${query}"的股票，请检查输入是否正确`);
+            }
+        }
+        
+        function renderCharts(data) {
+            const content = document.getElementById('stock-charts-content');
+            
+            // 准备数据
+            const labels = data.map(d => d.trade_date);
+            const mainNetInflow = data.map(d => d.main_net_inflow);
+            const superLargeNetInflow = data.map(d => d.super_large_net_inflow);
+            const largeNetInflow = data.map(d => d.large_net_inflow);
+            const mediumNetInflow = data.map(d => d.medium_net_inflow);
+            const smallNetInflow = data.map(d => d.small_net_inflow);
+            const closePrice = data.map(d => d.close_price || 0);
+            
+            // 计算当日净资金流向（正为流入，负为流出，主力+超大单+大单+中单+小单）
+            const dailyNet = data.map(d => {
+                return (d.main_net_inflow || 0) +
+                       (d.super_large_net_inflow || 0) +
+                       (d.large_net_inflow || 0) +
+                       (d.medium_net_inflow || 0) +
+                       (d.small_net_inflow || 0);
+            });
+            
+            // 计算累积资金流向
+            // 正向累积：从最早日期开始逐日累加
+            const forwardCumulative = [];
+            let sumForward = 0;
+            for (let i = 0; i < dailyNet.length; i++) {
+                sumForward += dailyNet[i] || 0;
+                forwardCumulative.push(sumForward);
+            }
+            // 反向累积：从最新日期开始向前逐日累加
+            const reverseCumulative = new Array(dailyNet.length);
+            let sumReverse = 0;
+            for (let i = dailyNet.length - 1; i >= 0; i--) {
+                sumReverse += dailyNet[i] || 0;
+                reverseCumulative[i] = sumReverse;
+            }
+            
+            // 计算统计信息：当日、最近3/5/10/20/60个交易日的累积流入流出
+            const latestDay = dailyNet[dailyNet.length - 1] || 0;
+            const last3Days = dailyNet.slice(-3).reduce((sum, val) => sum + (val || 0), 0);
+            const last5Days = dailyNet.slice(-5).reduce((sum, val) => sum + (val || 0), 0);
+            const last10Days = dailyNet.slice(-10).reduce((sum, val) => sum + (val || 0), 0);
+            const last20Days = dailyNet.slice(-20).reduce((sum, val) => sum + (val || 0), 0);
+            const last60Days = dailyNet.reduce((sum, val) => sum + (val || 0), 0);
+            
+            // 创建HTML结构（统计信息 + 3 个图表：当日净流向 / 累积图 / 不同玩家曲线）
+            content.innerHTML = `
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-title">📈 资金流向统计</div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px;">
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">当日</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${latestDay >= 0 ? '#e74c3c' : '#27ae60'};">
+                                ${formatMoney(latestDay)}
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近3个交易日</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${last3Days >= 0 ? '#e74c3c' : '#27ae60'};">
+                                ${formatMoney(last3Days)}
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近5个交易日</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${last5Days >= 0 ? '#e74c3c' : '#27ae60'};">
+                                ${formatMoney(last5Days)}
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近10个交易日</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${last10Days >= 0 ? '#e74c3c' : '#27ae60'};">
+                                ${formatMoney(last10Days)}
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近20个交易日</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${last20Days >= 0 ? '#e74c3c' : '#27ae60'};">
+                                ${formatMoney(last20Days)}
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                            <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近60个交易日</div>
+                            <div style="font-size: 18px; font-weight: bold; color: ${last60Days >= 0 ? '#e74c3c' : '#27ae60'};">
+                                ${formatMoney(last60Days)}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">当日资金流入流出总额</div>
+                    <canvas id="barChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">资金流入流出累积图</div>
+                    <canvas id="cumulativeChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">不同玩家资金流向</div>
+                    <canvas id="lineChart"></canvas>
+                </div>
+            `;
+            
+            // 销毁现有图表
+            if (barChart) {
+                barChart.destroy();
+            }
+            if (cumulativeChart) {
+                cumulativeChart.destroy();
+            }
+            if (lineChart) {
+                lineChart.destroy();
+            }
+            
+            // 创建柱状图 - 当日资金净流向（正在 0 轴上方，负在 0 轴下方）+ 收盘价折线图
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '当日净资金流向',
+                            data: dailyNet,
+                            yAxisID: 'y',
+                            backgroundColor: (context) => {
+                                const v = context.parsed.y || 0;
+                                return v >= 0 ? 'rgba(231, 76, 60, 0.6)' : 'rgba(39, 174, 96, 0.6)';
+                            },
+                            borderColor: (context) => {
+                                const v = context.parsed.y || 0;
+                                return v >= 0 ? 'rgba(231, 76, 60, 1)' : 'rgba(39, 174, 96, 1)';
+                            },
+                            borderWidth: 1
+                        },
+                        {
+                            label: '收盘价',
+                            data: closePrice,
+                            type: 'line',
+                            yAxisID: 'y1',
+                            borderColor: 'rgba(255, 152, 0, 1)',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 2,
+                            pointHoverRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '资金流向（万/亿）'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatMoney(value);
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '收盘价（元）'
+                            },
+                            grid: {
+                                drawOnChartArea: false, // 只在右侧Y轴显示网格线
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatPrice(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y1') {
+                                        label += formatPrice(context.parsed.y);
+                                    } else {
+                                        label += formatMoney(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 创建柱状图 - 资金流入流出累积图 + 收盘价折线图
+            const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
+            cumulativeChart = new Chart(cumulativeCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '历史累积',
+                            data: forwardCumulative,
+                            yAxisID: 'y',
+                            backgroundColor: 'rgba(52, 152, 219, 0.6)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '逆向历史累积',
+                            data: reverseCumulative,
+                            yAxisID: 'y',
+                            backgroundColor: 'rgba(155, 89, 182, 0.6)',
+                            borderColor: 'rgba(155, 89, 182, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '收盘价',
+                            data: closePrice,
+                            type: 'line',
+                            yAxisID: 'y1',
+                            borderColor: 'rgba(255, 152, 0, 1)',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 2,
+                            pointHoverRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: '资金流向（万/亿）'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatMoney(value);
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '收盘价（元）'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatPrice(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y1') {
+                                        label += formatPrice(context.parsed.y);
+                                    } else {
+                                        label += formatMoney(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 创建折线图 - 不同玩家的流入流出 + 收盘价折线图
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            lineChart = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '主力净流入',
+                            data: mainNetInflow,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '超大单净流入',
+                            data: superLargeNetInflow,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '大单净流入',
+                            data: largeNetInflow,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(155, 89, 182, 1)',
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '中单净流入',
+                            data: mediumNetInflow,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(241, 196, 15, 1)',
+                            backgroundColor: 'rgba(241, 196, 15, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '小单净流入',
+                            data: smallNetInflow,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(39, 174, 96, 1)',
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: '收盘价',
+                            data: closePrice,
+                            yAxisID: 'y1',
+                            borderColor: 'rgba(255, 152, 0, 1)',
+                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 2,
+                            pointHoverRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '资金流向（万/亿）'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatMoney(value);
+                                }
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '收盘价（元）'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return formatPrice(value);
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.dataset.yAxisID === 'y1') {
+                                        label += formatPrice(context.parsed.y);
+                                    } else {
+                                        label += formatMoney(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function formatMoney(value) {
+            // 大于等于1000万（1亿）使用"亿"为单位，否则使用"万"为单位
+            const absValue = Math.abs(value);
+            if (absValue >= 100000000) {
+                // 大于等于1亿（1000万），使用"亿"
+                return (value / 100000000).toFixed(2) + '亿';
+            } else if (absValue >= 10000) {
+                // 大于等于1万但小于1亿，使用"万"
+                return (value / 10000).toFixed(2) + '万';
+            } else {
+                // 小于1万，直接显示
+                return value.toFixed(2);
+            }
+        }
+        
+        function formatPrice(value) {
+            // 格式化价格，保留2位小数
+            return value.toFixed(2);
+        }
+    </script>
+</body>
+</html>
+

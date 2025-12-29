@@ -36,7 +36,7 @@ class Database:
             )
             return connection
         except Exception as e:
-            logger.error(f"数据库连接失败: {e}")
+            logger.error(f"Database connection failed: {e}")
             raise
     
     def execute_query(self, sql, params=None):
@@ -52,7 +52,7 @@ class Database:
         except Exception as e:
             if conn:
                 conn.rollback()
-            logger.error(f"查询执行失败: {e}")
+            logger.error(f"Query execution failed: {e}")
             raise
         finally:
             if conn:
@@ -70,7 +70,7 @@ class Database:
         except Exception as e:
             if conn:
                 conn.rollback()
-            logger.error(f"更新执行失败: {e}")
+            logger.error(f"Update execution failed: {e}")
             raise
         finally:
             if conn:
@@ -88,7 +88,7 @@ class Database:
         except Exception as e:
             if conn:
                 conn.rollback()
-            logger.error(f"批量执行失败: {e}")
+            logger.error(f"Batch execution failed: {e}")
             raise
         finally:
             if conn:

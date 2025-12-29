@@ -155,7 +155,7 @@ class HealthCalculator:
             }
             
         except Exception as e:
-            logger.error(f"计算健康度评分失败: {e}, secid: {secid}")
+            logger.error(f"Failed to calculate health score: {e}, secid: {secid}")
             return {
                 'health_score': 0,
                 'trend_direction': 'unknown',
@@ -174,7 +174,7 @@ class HealthCalculator:
         try:
             market_code, stock_code = secid.split('.')
         except ValueError:
-            logger.error(f"无效的secid格式: {secid}")
+            logger.error(f"Invalid secid format: {secid}")
             return
         
         sql = """
@@ -207,7 +207,7 @@ class HealthCalculator:
         
         try:
             db.execute_update(sql, params)
-            logger.info(f"更新健康度评分成功: {secid}, 评分: {health_data['health_score']}")
+            logger.info(f"Health score updated successfully: {secid}, score: {health_data['health_score']}")
         except Exception as e:
-            logger.error(f"更新健康度评分到数据库失败: {e}, secid: {secid}")
+            logger.error(f"Failed to update health score to database: {e}, secid: {secid}")
 
