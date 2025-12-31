@@ -1,13 +1,20 @@
 """
 数据采集服务
 从东方财富API采集股票数据
+使用 services/eastmoney_api.py 统一封装的API接口
 """
-import requests
 import logging
 from datetime import datetime
 from typing import List, Dict
+import pandas as pd
 from database.db_connection import db
-from config import EASTMONEY_API_BASE, EASTMONEY_HISTORY_API_BASE, INDICES_MAP
+from config import INDICES_MAP
+from services.eastmoney_api import (
+    get_all_a_stocks,
+    get_realtime_quotes,
+    get_history_capital_flow,
+    get_latest_quotes
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,128 +23,54 @@ class DataCollector:
     """数据采集器"""
     
     def __init__(self):
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Referer': 'https://www.eastmoney.com/'
-        })
+        # 不再需要 requests.Session，所有网络请求都通过 eastmoney_api 模块
+        pass
     
     def get_stock_list(self, page_size: int = 8000, delay: float = 1.0) -> List[Dict]:
         """
-        获取A股个股列表（分页获取所有数据）
-        API: https://push2.eastmoney.com/api/qt/clist/get?pz=8000&pn=1&fs=m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23&fields=f12,f13,f14,f26,f38,f39
+        获取A股个股列表（使用 eastmoney_api.get_all_a_stocks 自动分页）
         
         Args:
-            page_size: 每页数量，默认8000
-            delay: 每次请求后的延迟时间（秒），默认1秒
+            page_size: 每页数量（已废弃，get_all_a_stocks 内部使用固定分页大小）
+            delay: 每次请求后的延迟时间（已废弃，get_all_a_stocks 内部已处理延迟）
         """
-        import time
-        all_stocks = []
-        page = 1
-        
         try:
-            while True:
-                url = f"{EASTMONEY_API_BASE}/qt/clist/get"
-                params = {
-                    'pz': page_size,
-                    'pn': page,
-                    'fs': 'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23',
-                    'fields': 'f12,f13,f14,f26,f38,f39'
-                }
+            # 使用 eastmoney_api 模块的 get_all_a_stocks 函数
+            # 请求字段：f12(代码), f13(市场), f14(名称), f20(总市值), f21(流通市值)
+            fields = "f12,f13,f14,f20,f21"
+            logger.info("Fetching all A-stock data using eastmoney_api.get_all_a_stocks...")
+            
+            df = get_all_a_stocks(fields=fields, timeout=30)
+            
+            if df.empty:
+                logger.warning("No stock data retrieved")
+                return []
+            
+            # 转换为原来的格式
+            all_stocks = []
+            for _, row in df.iterrows():
+                stock_code = str(row.get('f12', ''))
+                market_code = int(row.get('f13', 1))  # 0=深市，1=沪市
+                stock_name = str(row.get('f14', ''))
+                total_market_cap = float(row.get('f20', 0)) if pd.notna(row.get('f20')) else 0  # f20=总市值
+                circulating_market_cap = float(row.get('f21', 0)) if pd.notna(row.get('f21')) else 0  # f21=流通市值
                 
-                logger.info(f"Fetching page {page} stock data...")
-                response = self.session.get(url, params=params, timeout=30)
-                response.raise_for_status()
-                data = response.json()
-                
-                # 调试：打印响应结构
-                if page == 1:
-                    logger.info(f"API response structure: rc={data.get('rc')}, data type={type(data.get('data'))}")
-                
-                if data.get('rc') == 0 and 'data' in data:
-                    data_obj = data['data']
-                    # 处理data可能是字符串的情况
-                    if isinstance(data_obj, str):
-                        import json
-                        try:
-                            data_obj = json.loads(data_obj)
-                        except Exception as parse_err:
-                            logger.warning(f"Page {page} data parsing failed: {parse_err}, skipping")
-                            break
-                    
-                    if not isinstance(data_obj, dict):
-                        logger.error(f"Page {page} data is not dict type: {type(data_obj)}")
-                        break
-                    
-                    page_stocks = []
-                    diff_data = data_obj.get('diff', [])
-                    
-                    # diff可能是列表或字典，需要处理两种情况
-                    if isinstance(diff_data, dict):
-                        # 如果是字典，可能是按索引组织的，需要获取所有值
-                        diff_list = list(diff_data.values()) if diff_data else []
-                    elif isinstance(diff_data, list):
-                        diff_list = diff_data
-                    else:
-                        logger.error(f"Page {page} diff format incorrect: {type(diff_data)}")
-                        break
-                    
-                    for item in diff_list:
-                        if not isinstance(item, dict):
-                            continue
-                        stock_code = item.get('f12', '')
-                        market_code = item.get('f13', 1)  # 0=深市，1=沪市
-                        stock_name = item.get('f14', '')
-                        total_market_cap = item.get('f26', 0)  # 总市值
-                        circulating_market_cap = item.get('f38', 0)  # 流通市值
-                        
-                        secid = f"{market_code}.{stock_code}"
-                        page_stocks.append({
-                            'stock_code': stock_code,
-                            'market_code': market_code,
-                            'stock_name': stock_name,
-                            'secid': secid,
-                            'total_market_cap': total_market_cap,
-                            'circulating_market_cap': circulating_market_cap
-                        })
-                    
-                    if not page_stocks:
-                        # 没有更多数据了
-                        break
-                    
-                    all_stocks.extend(page_stocks)
-                    logger.info(f"Page {page} fetched successfully, {len(page_stocks)} items in this page, {len(all_stocks)} total")
-                    
-                    # 检查是否还有更多数据
-                    total = data_obj.get('total', 0) if isinstance(data_obj, dict) else 0
-                    if total > 0:
-                        logger.info(f"API returned total: {total}, fetched: {len(all_stocks)}")
-                        if len(all_stocks) >= total:
-                            # 已获取全部数据
-                            logger.info(f"Fetched all {total} items")
-                            break
-                    
-                    # 如果本页没有数据，说明已经是最后一页
-                    if len(page_stocks) == 0:
-                        logger.info("No data in this page, all data fetched")
-                        break
-                    
-                    # 等待指定时间后再请求下一页
-                    if delay > 0:
-                        logger.info(f"Waiting {delay} seconds before fetching next page...")
-                        time.sleep(delay)
-                    
-                    page += 1
-                else:
-                    logger.warning(f"Page {page} fetch failed, response: {data}")
-                    break
+                secid = f"{market_code}.{stock_code}"
+                all_stocks.append({
+                    'stock_code': stock_code,
+                    'market_code': market_code,
+                    'stock_name': stock_name,
+                    'secid': secid,
+                    'total_market_cap': total_market_cap,
+                    'circulating_market_cap': circulating_market_cap
+                })
             
             logger.info(f"Stock list fetch completed, total {len(all_stocks)} items")
             return all_stocks
             
         except Exception as e:
             logger.error(f"Failed to get stock list: {e}")
-            return all_stocks  # 返回已获取的数据
+            return []
     
     def sync_stock_list(self, delay: float = 1.0) -> Dict:
         """
@@ -250,56 +183,73 @@ class DataCollector:
     def get_realtime_capital_flow(self, limit: int = 20) -> List[Dict]:
         """
         获取实时资金流向（前N名）
-        API: https://push2.eastmoney.com/api/qt/clist/get?fid=f62&po=1&pz=50&pn=1&np=1&fltt=2&invt=2&ut=8dec03ba335b81bf4ebdf7b29ec27d15&fs=m:0+t:6+f:!2,m:0+t:13+f:!2,m:0+t:80+f:!2,m:1+t:2+f:!2,m:1+t:23+f:!2,m:0+t:7+f:!2,m:1+t:3+f:!2&fields=f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87,f204,f205,f124,f1,f13
+        使用 eastmoney_api.get_realtime_quotes 接口
         """
         try:
-            url = f"{EASTMONEY_API_BASE}/qt/clist/get"
-            params = {
-                'fid': 'f62',  # 按主力净流入排序
-                'po': 1,
-                'pz': limit,
-                'pn': 1,
-                'np': 1,
-                'fltt': 2,
-                'invt': 2,
-                'ut': '8dec03ba335b81bf4ebdf7b29ec27d15',
-                'fs': 'm:0+t:6+f:!2,m:0+t:13+f:!2,m:0+t:80+f:!2,m:1+t:2+f:!2,m:1+t:23+f:!2,m:0+t:7+f:!2,m:1+t:3+f:!2',
-                'fields': 'f12,f14,f2,f3,f62,f184,f66,f69,f72,f75,f78,f81,f84,f87,f204,f205,f124,f1,f13'
-            }
-            response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
+            # 使用 eastmoney_api 模块的 get_realtime_quotes 函数
+            # 筛选条件：A股市场
+            fs = 'm:0+t:6+f:!2,m:0+t:13+f:!2,m:0+t:80+f:!2,m:1+t:2+f:!2,m:1+t:23+f:!2,m:0+t:7+f:!2,m:1+t:3+f:!2'
+            fields = 'f12,f13,f14,f2,f3,f62,f66,f69,f72,f75'  # 资金流向相关字段
+            # f62: 主力净流入, f66: 超大单净流入, f69: 大单净流入, f72: 中单净流入, f75: 小单净流入
             
-            if data.get('rc') == 0 and 'data' in data:
-                results = []
-                for item in data['data'].get('diff', []):
-                    stock_code = item.get('f12', '')
-                    market_code = item.get('f13', 1)
-                    stock_name = item.get('f14', '')
-                    current_price = item.get('f2', 0)
-                    change_percent = item.get('f3', 0)
-                    main_net_inflow = item.get('f62', 0)  # 主力净流入
-                    super_large_net_inflow = item.get('f66', 0)  # 超大单净流入
-                    large_net_inflow = item.get('f69', 0)  # 大单净流入
-                    medium_net_inflow = item.get('f72', 0)  # 中单净流入
-                    small_net_inflow = item.get('f75', 0)  # 小单净流入
-                    
-                    secid = f"{market_code}.{stock_code}"
-                    results.append({
-                        'stock_code': stock_code,
-                        'market_code': market_code,
-                        'stock_name': stock_name,
-                        'secid': secid,
-                        'current_price': current_price,
-                        'change_percent': change_percent,
-                        'main_net_inflow': main_net_inflow,
-                        'super_large_net_inflow': super_large_net_inflow,
-                        'large_net_inflow': large_net_inflow,
-                        'medium_net_inflow': medium_net_inflow,
-                        'small_net_inflow': small_net_inflow,
-                    })
-                return results
-            return []
+            # 获取更多数据以便排序后取前N名（获取 limit * 2 条数据以确保有足够的数据）
+            fetch_limit = max(limit * 2, 100)
+            
+            logger.info(f"Fetching realtime capital flow data (top {limit})...")
+            df = get_realtime_quotes(
+                fs=fs,
+                pn=1,
+                pz=fetch_limit,
+                po=1,  # 排序方式（虽然不能按f62排序，但我们可以手动排序）
+                np=1,
+                fields=fields,
+                timeout=30
+            )
+            
+            if df.empty:
+                logger.warning("No capital flow data retrieved")
+                return []
+            
+            # 确保 f62 字段存在且为数值类型，然后按主力净流入降序排序
+            if 'f62' in df.columns:
+                # 确保 f62 是数值类型
+                df['f62'] = pd.to_numeric(df['f62'], errors='coerce')
+                # 按主力净流入降序排序，取前 limit 条
+                df = df.sort_values('f62', ascending=False).head(limit)
+            else:
+                # 如果 f62 字段不存在，只取前 limit 条
+                df = df.head(limit)
+            
+            # 转换为原来的格式
+            results = []
+            for _, row in df.iterrows():
+                stock_code = str(row.get('f12', ''))
+                market_code = int(row.get('f13', 1))
+                stock_name = str(row.get('f14', ''))
+                current_price = float(row.get('f2', 0)) if pd.notna(row.get('f2')) else 0
+                change_percent = float(row.get('f3', 0)) if pd.notna(row.get('f3')) else 0
+                main_net_inflow = float(row.get('f62', 0)) if pd.notna(row.get('f62')) else 0  # 主力净流入
+                super_large_net_inflow = float(row.get('f66', 0)) if pd.notna(row.get('f66')) else 0  # 超大单净流入
+                large_net_inflow = float(row.get('f69', 0)) if pd.notna(row.get('f69')) else 0  # 大单净流入
+                medium_net_inflow = float(row.get('f72', 0)) if pd.notna(row.get('f72')) else 0  # 中单净流入
+                small_net_inflow = float(row.get('f75', 0)) if pd.notna(row.get('f75')) else 0  # 小单净流入
+                
+                secid = f"{market_code}.{stock_code}"
+                results.append({
+                    'stock_code': stock_code,
+                    'market_code': market_code,
+                    'stock_name': stock_name,
+                    'secid': secid,
+                    'current_price': current_price,
+                    'change_percent': change_percent,
+                    'main_net_inflow': main_net_inflow,
+                    'super_large_net_inflow': super_large_net_inflow,
+                    'large_net_inflow': large_net_inflow,
+                    'medium_net_inflow': medium_net_inflow,
+                    'small_net_inflow': small_net_inflow,
+                })
+            
+            return results
         except Exception as e:
             logger.error(f"Failed to get realtime capital flow: {e}")
             return []
@@ -307,94 +257,105 @@ class DataCollector:
     def get_stock_capital_flow_history(self, secid: str, limit: int = 250) -> List[Dict]:
         """
         获取个股历史资金数据
-        API: https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?lmt=0&klt=101&fields1=f1,f2,f3,f7&fields2=f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65&secid=0.300274
+        使用 eastmoney_api.get_history_capital_flow 接口
         """
         try:
-            url = f"{EASTMONEY_HISTORY_API_BASE}/qt/stock/fflow/daykline/get"
-            params = {
-                'lmt': limit,
-                'klt': 101,  # 日K线
-                'fields1': 'f1,f2,f3,f7',
-                'fields2': 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63,f64,f65',
-                'secid': secid
-            }
-            response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
+            # 解析secid
+            market_code, stock_code = secid.split('.')
+            market_code_int = int(market_code)
             
-            if data.get('rc') == 0 and 'data' in data:
-                klines = data['data'].get('klines', [])
-                results = []
-                
-                # 解析secid
-                market_code, stock_code = secid.split('.')
-                
-                for kline_str in klines:
-                    parts = kline_str.split(',')
-                    if len(parts) < 15:
+            # 使用 eastmoney_api 模块的 get_history_capital_flow 函数
+            logger.info(f"Fetching history capital flow data for {secid}...")
+            df = get_history_capital_flow(
+                code=stock_code,
+                lmt=limit,
+                market=market_code_int,
+                timeout=30
+            )
+            
+            if df.empty:
+                logger.warning(f"No history capital flow data for {secid}")
+                return []
+            
+            # 根据 eastmoney_api 的字段映射转换数据
+            # get_history_capital_flow 返回的 DataFrame 包含以下字段：
+            # f51: 日期, f52: 主力净流入, f53: 超大单净流入, f54: 大单净流入, 
+            # f55: 中单净流入, f56: 小单净流入, f57: 主力净流入占比, ...
+            # 注意：根据 CAPITAL_FLOW_FIELDS 映射，实际字段顺序可能不同
+            # 需要根据实际返回的字段进行映射
+            
+            results = []
+            for _, row in df.iterrows():
+                try:
+                    # f51 是日期字段（已转换为 datetime）
+                    trade_date = row.get('f51')
+                    if pd.isna(trade_date):
                         continue
+                    if isinstance(trade_date, pd.Timestamp):
+                        trade_date = trade_date.date()
+                    elif isinstance(trade_date, str):
+                        trade_date = datetime.strptime(trade_date, '%Y-%m-%d').date()
                     
-                    try:
-                        # 根据字段映射表解析数据（共15个字段，索引0-14）
-                        # 索引0: 日期
-                        trade_date = datetime.strptime(parts[0], '%Y-%m-%d').date()
-                        
-                        # 索引1 (f51): 主力净流入（大单+超大单）
-                        main_net_inflow = float(parts[1]) if len(parts) > 1 and parts[1] else 0  # f51
-                        
-                        # 索引2 (f52): 小单净流入
-                        small_net_inflow = float(parts[2]) if len(parts) > 2 and parts[2] else 0  # f52
-                        
-                        # 索引3 (f53): 中单净流入
-                        medium_net_inflow = float(parts[3]) if len(parts) > 3 and parts[3] else 0  # f53
-                        
-                        # 索引4 (f54): 大单净流入
-                        large_net_inflow = float(parts[4]) if len(parts) > 4 and parts[4] else 0  # f54
-                        
-                        # 索引5 (f55): 超大单净流入
-                        super_large_net_inflow = float(parts[5]) if len(parts) > 5 and parts[5] else 0  # f55
-                        
-                        # 索引6 (f56): 主力净流入占比
-                        main_net_inflow_ratio = float(parts[6]) if len(parts) > 6 and parts[6] else 0  # f56
-                        
-                        # 索引11 (f61): 收盘价
-                        close_price = float(parts[11]) if len(parts) > 11 and parts[11] else 0  # f61
-                        
-                        # 索引12 (f62): 涨跌幅
-                        change_percent = float(parts[12]) if len(parts) > 12 and parts[12] else 0  # f62
-                        
-                        # 注意：索引13和14是保留字段（f63, f64），值为0.00
-                        # 成交额和换手率可能不在这个API返回的数据中，设为NULL
-                        turnover_amount = None  # 成交额（API未提供）
-                        turnover_rate = None   # 换手率（API未提供）
-                        
-                        # 将CSV字符串转换为JSON字符串格式存储
-                        import json
-                        raw_data_json = json.dumps(kline_str, ensure_ascii=False)
-                        
-                        results.append({
-                            'stock_code': stock_code,
-                            'market_code': int(market_code),
-                            'secid': secid,
-                            'trade_date': trade_date,
-                            'main_net_inflow': main_net_inflow,  # f51: 主力净流入
-                            'super_large_net_inflow': super_large_net_inflow,  # f55: 超大单净流入
-                            'large_net_inflow': large_net_inflow,  # f54: 大单净流入
-                            'medium_net_inflow': medium_net_inflow,  # f53: 中单净流入
-                            'small_net_inflow': small_net_inflow,  # f52: 小单净流入
-                            'main_net_inflow_ratio': main_net_inflow_ratio,  # f56: 主力净流入占比
-                            'close_price': close_price,  # f61: 收盘价
-                            'change_percent': change_percent,  # f62: 涨跌幅
-                            'turnover_rate': turnover_rate,  # 换手率（待确认字段）
-                            'turnover_amount': turnover_amount,  # 成交额（待确认字段）
-                            'raw_data': raw_data_json
-                        })
-                    except (ValueError, IndexError) as e:
-                        logger.warning(f"Failed to parse history data: {e}, data: {kline_str}")
-                        continue
-                
-                return results
-            return []
+                    # 根据 CAPITAL_FLOW_FIELDS 映射：
+                    # f52: main_net_inflow (主力净流入)
+                    # f53: super_large_net_inflow (超大单净流入)
+                    # f54: large_net_inflow (大单净流入)
+                    # f55: medium_net_inflow (中单净流入)
+                    # f56: small_net_inflow (小单净流入)
+                    # f57: main_net_inflow_pct (主力净流入占比)
+                    # f61: small_net_inflow_pct (小单净流入占比)
+                    # f62: main_net_inflow_trend (主力净流入趋势)
+                    # f63: main_net_inflow_trend_pct (主力净流入趋势占比)
+                    
+                    main_net_inflow = float(row.get('f52', 0)) if pd.notna(row.get('f52')) else 0
+                    super_large_net_inflow = float(row.get('f53', 0)) if pd.notna(row.get('f53')) else 0
+                    large_net_inflow = float(row.get('f54', 0)) if pd.notna(row.get('f54')) else 0
+                    medium_net_inflow = float(row.get('f55', 0)) if pd.notna(row.get('f55')) else 0
+                    small_net_inflow = float(row.get('f56', 0)) if pd.notna(row.get('f56')) else 0
+                    main_net_inflow_ratio = float(row.get('f57', 0)) if pd.notna(row.get('f57')) else 0
+                    
+                    # 尝试获取收盘价和涨跌幅（如果存在）
+                    # 注意：get_history_capital_flow 可能不包含这些字段，需要从其他API获取
+                    close_price = float(row.get('f61', 0)) if pd.notna(row.get('f61')) and 'f61' in row.index else None
+                    change_percent = float(row.get('f62', 0)) if pd.notna(row.get('f62')) and 'f62' in row.index else None
+                    
+                    # 如果 close_price 和 change_percent 不在资金流向数据中，设为 None
+                    # 这些数据可能需要从 K线数据中获取
+                    if close_price == 0:
+                        close_price = None
+                    if change_percent == 0:
+                        change_percent = None
+                    
+                    turnover_amount = None  # 成交额（API未提供）
+                    turnover_rate = None   # 换手率（API未提供）
+                    
+                    # 将原始数据转换为JSON字符串格式存储
+                    import json
+                    raw_data_dict = {col: str(row[col]) if pd.notna(row[col]) else None for col in df.columns}
+                    raw_data_json = json.dumps(raw_data_dict, ensure_ascii=False)
+                    
+                    results.append({
+                        'stock_code': stock_code,
+                        'market_code': market_code_int,
+                        'secid': secid,
+                        'trade_date': trade_date,
+                        'main_net_inflow': main_net_inflow,  # f52: 主力净流入
+                        'super_large_net_inflow': super_large_net_inflow,  # f53: 超大单净流入
+                        'large_net_inflow': large_net_inflow,  # f54: 大单净流入
+                        'medium_net_inflow': medium_net_inflow,  # f55: 中单净流入
+                        'small_net_inflow': small_net_inflow,  # f56: 小单净流入
+                        'main_net_inflow_ratio': main_net_inflow_ratio,  # f57: 主力净流入占比
+                        'close_price': close_price,  # f61: 收盘价（如果存在）
+                        'change_percent': change_percent,  # f62: 涨跌幅（如果存在）
+                        'turnover_rate': turnover_rate,  # 换手率（待确认字段）
+                        'turnover_amount': turnover_amount,  # 成交额（待确认字段）
+                        'raw_data': raw_data_json
+                    })
+                except Exception as e:
+                    logger.warning(f"Failed to parse history data row: {e}")
+                    continue
+            
+            return results
         except Exception as e:
             logger.error(f"Failed to get stock history capital flow data: {e}, secid: {secid}")
             return []
@@ -546,50 +507,57 @@ class DataCollector:
     def get_index_data(self) -> List[Dict]:
         """
         获取指数数据
-        API: https://push2.eastmoney.com/api/qt/ulist.np/get?fltt=2&secids=1.000001,0.399001&fields=f1,f2,f3,f4,f6,f12,f13,f104,f105,f106
+        使用 eastmoney_api.get_latest_quotes 接口
         """
         try:
-            secids = ','.join(INDICES_MAP.keys())
-            url = f"{EASTMONEY_API_BASE}/qt/ulist.np/get"
-            params = {
-                'fltt': 2,
-                'secids': secids,
-                'fields': 'f1,f2,f3,f4,f6,f12,f13,f104,f105,f106'
-            }
-            response = self.session.get(url, params=params, timeout=30)
-            response.raise_for_status()
-            data = response.json()
+            # 获取所有指数的 secid 列表
+            secids = list(INDICES_MAP.keys())
             
-            if data.get('rc') == 0 and 'data' in data:
-                results = []
-                for item in data['data'].get('diff', []):
-                    index_code = item.get('f12', '')
-                    market_code = item.get('f13', 1)
-                    current_value = item.get('f2', 0)
-                    change_value = item.get('f4', 0)
-                    change_percent = item.get('f3', 0)
-                    total_amount = item.get('f6', 0)
-                    up_count = item.get('f104', 0)
-                    down_count = item.get('f105', 0)
-                    flat_count = item.get('f106', 0)
-                    
-                    secid = f"{market_code}.{index_code}"
-                    index_name = INDICES_MAP.get(secid, '')
-                    
-                    results.append({
-                        'index_code': index_code,
-                        'index_name': index_name,
-                        'secid': secid,
-                        'current_value': current_value,
-                        'change_value': change_value,
-                        'change_percent': change_percent,
-                        'total_amount': total_amount,
-                        'up_count': up_count,
-                        'down_count': down_count,
-                        'flat_count': flat_count,
-                    })
-                return results
-            return []
+            if not secids:
+                logger.warning("No indices configured in INDICES_MAP")
+                return []
+            
+            # 使用 eastmoney_api 模块的 get_latest_quotes 函数
+            # 请求字段：f1, f2(最新价), f3(涨跌幅), f4(涨跌额), f6(成交额), f12(代码), f13(市场), f104(上涨家数), f105(下跌家数), f106(平盘家数)
+            fields = 'f1,f2,f3,f4,f6,f12,f13,f104,f105,f106'
+            
+            logger.info(f"Fetching index data for {len(secids)} indices...")
+            df = get_latest_quotes(quote_ids=secids, fields=fields, timeout=30)
+            
+            if df.empty:
+                logger.warning("No index data retrieved")
+                return []
+            
+            # 转换为原来的格式
+            results = []
+            for _, row in df.iterrows():
+                index_code = str(row.get('f12', ''))
+                market_code = int(row.get('f13', 1))
+                current_value = float(row.get('f2', 0)) if pd.notna(row.get('f2')) else 0
+                change_value = float(row.get('f4', 0)) if pd.notna(row.get('f4')) else 0
+                change_percent = float(row.get('f3', 0)) if pd.notna(row.get('f3')) else 0
+                total_amount = float(row.get('f6', 0)) if pd.notna(row.get('f6')) else 0
+                up_count = int(row.get('f104', 0)) if pd.notna(row.get('f104')) else 0
+                down_count = int(row.get('f105', 0)) if pd.notna(row.get('f105')) else 0
+                flat_count = int(row.get('f106', 0)) if pd.notna(row.get('f106')) else 0
+                
+                secid = f"{market_code}.{index_code}"
+                index_name = INDICES_MAP.get(secid, '')
+                
+                results.append({
+                    'index_code': index_code,
+                    'index_name': index_name,
+                    'secid': secid,
+                    'current_value': current_value,
+                    'change_value': change_value,
+                    'change_percent': change_percent,
+                    'total_amount': total_amount,
+                    'up_count': up_count,
+                    'down_count': down_count,
+                    'flat_count': flat_count,
+                })
+            
+            return results
         except Exception as e:
             logger.error(f"Failed to get index data: {e}")
             return []

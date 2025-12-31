@@ -31,11 +31,11 @@ class MCPServer:
         self.tools = {
             'get_stock_list': self._get_stock_list,
             'get_stock_secid': self._get_stock_secid,  # 新增：便捷查询股票代码和交易所
-            'get_stock_health': self._get_stock_health,
+            # 'get_stock_health': self._get_stock_health,  # 暂时屏蔽
             'get_stock_history': self._get_stock_history,
             'get_realtime_capital_flow': self._get_realtime_capital_flow,
             'get_index_data': self._get_index_data,
-            'analyze_stock_trend': self._analyze_stock_trend,
+            # 'analyze_stock_trend': self._analyze_stock_trend,  # 暂时屏蔽
             'compare_stocks': self._compare_stocks,
             'sync_stock_list': self._sync_stock_list,
             'sync_stock_history': self._sync_stock_history,
