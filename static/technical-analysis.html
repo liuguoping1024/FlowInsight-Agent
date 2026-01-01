@@ -1,0 +1,1618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>技术分析 - FlowInsight</title>
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .card {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .chart-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chart-controls select {
+            padding: 6px 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+        
+        .chart-controls button {
+            padding: 6px 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        .chart-controls button:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .stock-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .stock-search {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stock-search input {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            width: 200px;
+        }
+        
+        .stock-search button {
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 5px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+        }
+        
+        .stock-search button:hover {
+            background: #5568d3;
+        }
+        
+        .stock-selector select {
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+            min-width: 200px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .description-text {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 10px;
+        }
+        
+        /* K线图样式（包含成交量） */
+        .kline-chart-container {
+            position: relative;
+            height: 550px;  /* 调整高度，减少空白 */
+            width: 100%;
+        }
+        
+        /* 指标图容器 */
+        .indicator-chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        /* 自定义对话框样式 */
+        .custom-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .custom-dialog {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .custom-dialog-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .custom-dialog-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        
+        .custom-dialog-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .custom-dialog-close:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .custom-dialog-body {
+            padding: 24px;
+            color: #666;
+            line-height: 1.6;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .custom-dialog-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .custom-dialog-button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .custom-dialog-button-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .custom-dialog-button-primary:hover {
+            background: #5568d3;
+        }
+        
+        .custom-dialog-button-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .custom-dialog-button-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .custom-dialog-icon {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+        
+        .custom-dialog-icon.error {
+            color: #e74c3c;
+        }
+        
+        .custom-dialog-icon.warning {
+            color: #f39c12;
+        }
+        
+        .custom-dialog-icon.info {
+            color: #3498db;
+        }
+        
+        .custom-dialog-icon.success {
+            color: #27ae60;
+        }
+        
+        @media (max-width: 768px) {
+            .custom-dialog {
+                width: 95%;
+                max-width: none;
+            }
+            
+            .custom-dialog-header,
+            .custom-dialog-body,
+            .custom-dialog-footer {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body style="display: none;">
+    <nav-bar></nav-bar>
+    
+    <div class="main-content">
+        <div class="container">
+            <!-- 技术分析 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📊 技术分析</div>
+                    <div class="stock-selector">
+                        <div class="stock-search">
+                            <input type="text" id="stock-search-input" placeholder="输入代码或名称" onkeypress="if(event.key==='Enter') searchStock()">
+                            <button onclick="searchStock()">查询</button>
+                        </div>
+                        <select id="stock-selector" onchange="loadTechnicalData()">
+                            <option value="">请选择...</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="technical-charts-content">
+                    <div class="loading">加载中...</div>
+                </div>
+            </div>
+            <div class="description-text">
+                选择标的，查看日K线图、MACD、KDJ等技术指标<br>
+                <span style="color: #999;">支持查看您持股的标的或自定义搜索</span>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/auth.js"></script>
+    <script src="js/navbar.js"></script>
+    <script>
+        // 页面加载时立即检查认证
+        (async function() {
+            const token = Auth.getToken();
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            const isAuthenticated = await Auth.requireAuth();
+            if (!isAuthenticated) {
+                return;
+            }
+            
+            document.body.style.display = '';
+            loadStockSelector();
+        })();
+        
+        let klineChart = null;
+        let macdChart = null;
+        let kdjChart = null;
+        let stockList = []; // 保存列表用于搜索
+        
+        // 自定义对话框函数
+        function showCustomDialog(options) {
+            return new Promise((resolve) => {
+                const {
+                    title = '提示',
+                    message = '',
+                    type = 'info', // info, success, warning, error
+                    confirmText = '确定',
+                    cancelText = '取消',
+                    showCancel = false,
+                    onConfirm = null,
+                    onCancel = null
+                } = options;
+                
+                // 创建遮罩层
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-dialog-overlay';
+                overlay.onclick = (e) => {
+                    if (e.target === overlay && showCancel) {
+                        document.body.removeChild(overlay);
+                        if (onCancel) onCancel();
+                        resolve(false);
+                    }
+                };
+                
+                // 创建对话框
+                const dialog = document.createElement('div');
+                dialog.className = 'custom-dialog';
+                dialog.onclick = (e) => e.stopPropagation();
+                
+                // 图标映射
+                const iconMap = {
+                    error: '✕',
+                    warning: '⚠',
+                    info: 'ℹ',
+                    success: '✓'
+                };
+                
+                dialog.innerHTML = `
+                    <div class="custom-dialog-header">
+                        <h3 class="custom-dialog-title">${title}</h3>
+                        ${showCancel ? `<button class="custom-dialog-close" onclick="this.closest('.custom-dialog-overlay').remove()">×</button>` : ''}
+                    </div>
+                    <div class="custom-dialog-body">
+                        <div class="custom-dialog-icon ${type}">${iconMap[type] || iconMap.info}</div>
+                        <div style="text-align: center; font-size: 15px;">${message}</div>
+                    </div>
+                    <div class="custom-dialog-footer">
+                        ${showCancel ? `<button class="custom-dialog-button custom-dialog-button-secondary" id="dialog-cancel">${cancelText}</button>` : ''}
+                        <button class="custom-dialog-button custom-dialog-button-primary" id="dialog-confirm">${confirmText}</button>
+                    </div>
+                `;
+                
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+                
+                // 绑定事件
+                const confirmBtn = dialog.querySelector('#dialog-confirm');
+                confirmBtn.onclick = () => {
+                    document.body.removeChild(overlay);
+                    if (onConfirm) onConfirm();
+                    resolve(true);
+                };
+                
+                if (showCancel) {
+                    const cancelBtn = dialog.querySelector('#dialog-cancel');
+                    cancelBtn.onclick = () => {
+                        document.body.removeChild(overlay);
+                        if (onCancel) onCancel();
+                        resolve(false);
+                    };
+                }
+                
+                // ESC键关闭
+                const handleEsc = (e) => {
+                    if (e.key === 'Escape' && showCancel) {
+                        document.removeEventListener('keydown', handleEsc);
+                        document.body.removeChild(overlay);
+                        if (onCancel) onCancel();
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', handleEsc);
+            });
+        }
+        
+        // 简化的提示函数（替换alert）
+        function showAlert(message, type = 'info') {
+            return showCustomDialog({
+                title: type === 'error' ? '错误' : type === 'warning' ? '警告' : type === 'success' ? '成功' : '提示',
+                message: message,
+                type: type,
+                showCancel: false
+            });
+        }
+        
+        // 显示股票选择对话框（当有多个匹配结果时）
+        function showStockSelectionDialog(stocks, query) {
+            return new Promise((resolve) => {
+                // 创建对话框HTML
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 10000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                `;
+                
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    max-width: 500px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                `;
+                
+                content.innerHTML = `
+                    <h3 style="margin-top: 0;">找到多个匹配结果（${query}）</h3>
+                    <p style="color: #666; margin-bottom: 15px;">请选择要查询的标的：</p>
+                    <div id="stock-selection-list" style="margin-bottom: 15px;"></div>
+                    <div style="text-align: right;">
+                        <button id="cancel-selection" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; background: white; border-radius: 5px; cursor: pointer;">取消</button>
+                    </div>
+                `;
+                
+                const list = content.querySelector('#stock-selection-list');
+                stocks.forEach((stock, index) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = `
+                        padding: 12px;
+                        margin-bottom: 8px;
+                        border: 1px solid #ddd;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    `;
+                    item.onmouseover = () => item.style.background = '#f5f5f5';
+                    item.onmouseout = () => item.style.background = 'white';
+                    item.onclick = () => {
+                        document.body.removeChild(dialog);
+                        resolve(stock);
+                    };
+                    
+                    const isIndex = stock.secid === '1.000001' || stock.secid === '0.399001';
+                    item.innerHTML = `
+                        <div style="font-weight: bold;">${stock.stock_code} ${stock.stock_name || ''}</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            ${isIndex ? '📈 指数' : '📊 标的'} | ${stock.secid}
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+                
+                const cancelBtn = content.querySelector('#cancel-selection');
+                cancelBtn.onclick = () => {
+                    document.body.removeChild(dialog);
+                    resolve(null);
+                };
+                
+                dialog.appendChild(content);
+                document.body.appendChild(dialog);
+            });
+        }
+        
+        async function loadStockSelector() {
+            const selector = document.getElementById('stock-selector');
+            try {
+                const response = await Auth.authFetch(`${API_BASE}/dashboard/holdings`);
+                if (!response) return;
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    // 保存列表用于搜索
+                    stockList = result.data;
+                    
+                    selector.innerHTML = '<option value="">请选择...</option>';
+                    let defaultSecid = null; // 默认选中的secid（上证指数）
+                    
+                    result.data.forEach(stock => {
+                        const option = document.createElement('option');
+                        option.value = stock.secid;
+                        const displayName = stock.is_index 
+                            ? `📈 ${stock.stock_code} ${stock.stock_name || ''}`
+                            : `${stock.stock_code} ${stock.stock_name || ''}`;
+                        option.textContent = displayName;
+                        selector.appendChild(option);
+                        
+                        // 找到上证指数（secid: 1.000001）作为默认选中
+                        if (stock.secid === '1.000001') {
+                            defaultSecid = stock.secid;
+                        }
+                    });
+                    
+                    // 如果找到上证指数，设置为默认选中并自动加载数据
+                    if (defaultSecid) {
+                        selector.value = defaultSecid;
+                        // 自动加载上证指数的数据
+                        await loadTechnicalData();
+                    }
+                } else {
+                    selector.innerHTML = '<option value="">加载中...</option>';
+                }
+            } catch (error) {
+                console.error('加载列表失败:', error);
+                selector.innerHTML = '<option value="">加载失败</option>';
+            }
+        }
+        
+        async function loadTechnicalData(secid = null) {
+            const selector = document.getElementById('stock-selector');
+            const targetSecid = secid || selector.value;
+            const content = document.getElementById('technical-charts-content');
+            
+            if (!targetSecid) {
+                content.innerHTML = '<div class="loading">请先选择</div>';
+                // 销毁现有图表
+                if (klineChart) {
+                    klineChart.destroy();
+                    klineChart = null;
+                }
+                if (macdChart) {
+                    macdChart.destroy();
+                    macdChart = null;
+                }
+                if (kdjChart) {
+                    kdjChart.destroy();
+                    kdjChart = null;
+                }
+                return;
+            }
+            
+            // 如果通过secid加载，更新下拉框选中状态
+            if (secid) {
+                selector.value = secid;
+            }
+            
+            content.innerHTML = '<div class="loading">加载中...</div>';
+            
+            try {
+                // 获取K线数据
+                const response = await Auth.authFetch(`${API_BASE}/stocks/${encodeURIComponent(targetSecid)}/kline?limit=120&days=180`);
+                if (!response) return;
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data.length > 0) {
+                    renderTechnicalCharts(result.data);
+                } else {
+                    content.innerHTML = '<div class="loading">暂无数据</div>';
+                }
+            } catch (error) {
+                console.error('加载技术分析数据失败:', error);
+                content.innerHTML = '<div class="loading">加载失败</div>';
+            }
+        }
+        
+        // 计算EMA（指数移动平均）
+        function calculateEMA(data, period) {
+            const ema = [];
+            const multiplier = 2 / (period + 1);
+            
+            // 第一个值使用SMA
+            let sum = 0;
+            for (let i = 0; i < period && i < data.length; i++) {
+                sum += data[i];
+            }
+            ema[period - 1] = sum / period;
+            
+            // 计算后续的EMA
+            for (let i = period; i < data.length; i++) {
+                ema[i] = (data[i] - ema[i - 1]) * multiplier + ema[i - 1];
+            }
+            
+            return ema;
+        }
+        
+        // 计算MACD指标
+        // fast: 快速EMA周期，slow: 慢速EMA周期，signal: 信号线EMA周期
+        function calculateMACD(closePrices, fast = 12, slow = 26, signal = 9) {
+            const emaFast = calculateEMA(closePrices, fast);
+            const emaSlow = calculateEMA(closePrices, slow);
+            
+            const dif = [];
+            const dea = [];
+            const macd = [];
+            
+            // 计算DIF (EMA快线 - EMA慢线)
+            const minPeriod = Math.max(fast, slow);
+            for (let i = 0; i < closePrices.length; i++) {
+                if (i >= minPeriod - 1) { // 需要至少max(fast, slow)个数据点
+                    dif[i] = emaFast[i] - emaSlow[i];
+                } else {
+                    dif[i] = null;
+                }
+            }
+            
+            // 计算DEA (DIF的signal日EMA)
+            // 提取所有非null的DIF值
+            const difForDea = [];
+            const difIndices = []; // 记录每个DIF值对应的原始索引
+            for (let i = minPeriod - 1; i < dif.length; i++) {
+                if (dif[i] !== null) {
+                    difForDea.push(dif[i]);
+                    difIndices.push(i);
+                }
+            }
+            
+            if (difForDea.length >= signal) {
+                // 对DIF值计算signal日EMA
+                const deaEmaValues = calculateEMA(difForDea, signal);
+                // deaEmaValues从索引signal-1开始有值
+                // 初始化所有DEA为null
+                for (let i = 0; i < closePrices.length; i++) {
+                    dea[i] = null;
+                }
+                // 从索引signal-1开始，填充DEA值
+                for (let j = signal - 1; j < deaEmaValues.length; j++) {
+                    const originalIndex = difIndices[j];
+                    if (originalIndex < closePrices.length) {
+                        dea[originalIndex] = deaEmaValues[j];
+                    }
+                }
+            } else {
+                // DIF值不足signal个，所有DEA都是null
+                for (let i = 0; i < closePrices.length; i++) {
+                    dea[i] = null;
+                }
+            }
+            
+            // 计算MACD柱 (2 * (DIF - DEA))
+            for (let i = 0; i < closePrices.length; i++) {
+                if (dif[i] !== null && dea[i] !== null) {
+                    macd[i] = 2 * (dif[i] - dea[i]);
+                } else {
+                    macd[i] = null;
+                }
+            }
+            
+            return { dif, dea, macd };
+        }
+        
+        // MACD周期配置
+        const macdPeriods = {
+            'standard': { fast: 12, slow: 26, signal: 9, name: '标准周期' },
+            'shanghai': { fast: 10, slow: 20, signal: 7, name: '上证周期' },
+            'shenzhen': { fast: 10, slow: 22, signal: 9, name: '深证周期' },
+            'short': { fast: 8, slow: 17, signal: 5, name: '短线周期' },
+            'long': { fast: 26, slow: 55, signal: 15, name: '长线周期' }
+        };
+        
+        // MACD周期改变事件处理
+        async function onMACDPeriodChange() {
+            const selector = document.getElementById('macd-period-select');
+            const period = selector.value;
+            const config = macdPeriods[period];
+            
+            if (!config || currentAllClosePrices.length === 0) {
+                return;
+            }
+            
+            // 使用新的周期参数重新计算MACD
+            const macdData = calculateMACD(currentAllClosePrices, config.fast, config.slow, config.signal);
+            
+            // 只显示最近80个交易日的数据
+            const displayCount = 80;
+            const startIndex = Math.max(0, currentAllLabels.length - displayCount);
+            const labels = currentAllLabels.slice(startIndex);
+            
+            // 提取最后80个交易日的MACD数据
+            const displayMacdData = {
+                dif: macdData.dif.slice(startIndex),
+                dea: macdData.dea.slice(startIndex),
+                macd: macdData.macd.slice(startIndex)
+            };
+            
+            // 重新绘制MACD图
+            renderMACDChart(labels, displayMacdData);
+        }
+        
+        // 显示MACD帮助信息
+        function showMACDHelp() {
+            const helpText = `
+MACD周期说明：
+
+• 标准周期：EMA(12, 26, 9) - 经典MACD参数
+• 上证周期：EMA(10, 20, 7) - 适合上证指数
+• 深证周期：EMA(10, 22, 9) - 适合深证指数
+• 短线周期：EMA(8, 17, 5) - 适合短线交易
+• 长线周期：EMA(26, 55, 15) - 适合长线投资
+
+参数说明：
+- 第一个数字：快速EMA周期
+- 第二个数字：慢速EMA周期
+- 第三个数字：信号线EMA周期
+            `;
+            showAlert(helpText.trim(), 'info');
+        }
+        
+        // 计算KDJ指标
+        function calculateKDJ(highPrices, lowPrices, closePrices, period = 9) {
+            const rsv = [];
+            const k = [];
+            const d = [];
+            const j = [];
+            
+            // 计算RSV
+            for (let i = period - 1; i < closePrices.length; i++) {
+                const high = Math.max(...highPrices.slice(i - period + 1, i + 1));
+                const low = Math.min(...lowPrices.slice(i - period + 1, i + 1));
+                const close = closePrices[i];
+                
+                if (high === low) {
+                    rsv[i] = 50; // 避免除零
+                } else {
+                    rsv[i] = ((close - low) / (high - low)) * 100;
+                }
+            }
+            
+            // 计算K值（RSV的3日移动平均）
+            for (let i = period - 1; i < closePrices.length; i++) {
+                if (i === period - 1) {
+                    k[i] = rsv[i] / 3;
+                } else {
+                    k[i] = (2 * k[i - 1] + rsv[i]) / 3;
+                }
+            }
+            
+            // 计算D值（K的3日移动平均）
+            for (let i = period - 1; i < closePrices.length; i++) {
+                if (i === period - 1) {
+                    d[i] = k[i] / 3;
+                } else {
+                    d[i] = (2 * d[i - 1] + k[i]) / 3;
+                }
+            }
+            
+            // 计算J值（3*K - 2*D）
+            for (let i = period - 1; i < closePrices.length; i++) {
+                j[i] = 3 * k[i] - 2 * d[i];
+            }
+            
+            // 填充前面的null值
+            const result = { k: [], d: [], j: [] };
+            for (let i = 0; i < closePrices.length; i++) {
+                result.k[i] = i >= period - 1 ? k[i] : null;
+                result.d[i] = i >= period - 1 ? d[i] : null;
+                result.j[i] = i >= period - 1 ? j[i] : null;
+            }
+            
+            return result;
+        }
+        
+        // 保存原始数据，用于重新计算MACD
+        let currentAllClosePrices = [];
+        let currentAllLabels = [];
+        let currentAllOpenPrices = [];
+        let currentAllHighPrices = [];
+        let currentAllLowPrices = [];
+        let currentAllVolumes = [];
+        
+        function renderTechnicalCharts(data) {
+            const content = document.getElementById('technical-charts-content');
+            
+            // 使用全部数据计算技术指标（120个交易日）
+            const allLabels = data.map(d => d.trade_date);
+            const allOpenPrices = data.map(d => d.open_price || 0);
+            const allClosePrices = data.map(d => d.close_price || 0);
+            const allHighPrices = data.map(d => d.high_price || 0);
+            const allLowPrices = data.map(d => d.low_price || 0);
+            const allVolumes = data.map(d => d.volume || 0);
+            
+            // 保存原始数据，用于重新计算MACD
+            currentAllClosePrices = allClosePrices;
+            currentAllLabels = allLabels;
+            currentAllOpenPrices = allOpenPrices;
+            currentAllHighPrices = allHighPrices;
+            currentAllLowPrices = allLowPrices;
+            currentAllVolumes = allVolumes;
+            
+            // 使用全部120个数据点计算技术指标（默认标准周期）
+            const macdData = calculateMACD(allClosePrices, 12, 26, 9);
+            const kdjData = calculateKDJ(allHighPrices, allLowPrices, allClosePrices);
+            
+            // 只显示最近80个交易日的数据
+            const displayCount = 80;
+            const startIndex = Math.max(0, allLabels.length - displayCount);
+            
+            // 提取最后80个交易日的数据用于显示
+            const labels = allLabels.slice(startIndex);
+            const openPrices = allOpenPrices.slice(startIndex);
+            const closePrices = allClosePrices.slice(startIndex);
+            const highPrices = allHighPrices.slice(startIndex);
+            const lowPrices = allLowPrices.slice(startIndex);
+            const volumes = allVolumes.slice(startIndex);
+            
+            // 提取最后80个交易日的MACD数据
+            const displayMacdData = {
+                dif: macdData.dif.slice(startIndex),
+                dea: macdData.dea.slice(startIndex),
+                macd: macdData.macd.slice(startIndex)
+            };
+            
+            // 提取最后80个交易日的KDJ数据
+            const displayKdjData = {
+                k: kdjData.k.slice(startIndex),
+                d: kdjData.d.slice(startIndex),
+                j: kdjData.j.slice(startIndex)
+            };
+            
+            // 创建HTML结构
+            content.innerHTML = `
+                <div class="card">
+                    <div class="chart-title">日K线图</div>
+                    <div class="kline-chart-container">
+                        <canvas id="klineChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="chart-title">
+                        <span>MACD指标</span>
+                        <div class="chart-controls">
+                            <select id="macd-period-select" onchange="onMACDPeriodChange()">
+                                <option value="standard">标准周期</option>
+                                <option value="shanghai">上证周期</option>
+                                <option value="shenzhen">深证周期</option>
+                                <option value="short">短线周期</option>
+                                <option value="long">长线周期</option>
+                            </select>
+                            <button id="macd-help-btn" onclick="showMACDHelp()" title="MACD周期说明">?</button>
+                        </div>
+                    </div>
+                    <div class="indicator-chart-container">
+                        <canvas id="macdChart"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="chart-title">KDJ指标</div>
+                    <div class="indicator-chart-container">
+                        <canvas id="kdjChart"></canvas>
+                    </div>
+                </div>
+            `;
+            
+            // 销毁现有图表
+            if (klineChart) {
+                klineChart.destroy();
+            }
+            if (macdChart) {
+                macdChart.destroy();
+            }
+            if (kdjChart) {
+                kdjChart.destroy();
+            }
+            
+            // 绘制K线图（包含成交量，在同一张图上）
+            renderKlineChart(labels, openPrices, highPrices, lowPrices, closePrices, volumes);
+            
+            // 绘制MACD图（只显示最近80个交易日）
+            renderMACDChart(labels, displayMacdData);
+            
+            // 绘制KDJ图（只显示最近80个交易日）
+            renderKDJChart(labels, displayKdjData);
+        }
+        
+        function renderKlineChart(labels, openPrices, highPrices, lowPrices, closePrices, volumes) {
+            const ctx = document.getElementById('klineChart').getContext('2d');
+            
+            // 计算价格范围，用于设置Y轴
+            const allPrices = [...highPrices, ...lowPrices, ...openPrices, ...closePrices].filter(p => p > 0);
+            const minPrice = Math.min(...allPrices);
+            const maxPrice = Math.max(...allPrices);
+            const priceRange = maxPrice - minPrice;
+            const padding = priceRange * 0.1; // 上下各留10%的padding
+            
+            // 计算成交量范围
+            const maxVolume = Math.max(...volumes);
+            
+            // 使用Chart.js绘制K线图（包含成交量）
+            // 只使用收盘价折线图来建立坐标系，K线和成交量完全用自定义绘制
+            klineChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '收盘价',
+                            data: closePrices,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(52, 152, 219, 0)',  // 透明，隐藏原始折线
+                            backgroundColor: 'rgba(52, 152, 219, 0)',
+                            borderWidth: 0,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            order: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: {
+                            bottom: 10  // 为成交量区域和日期标注预留空间（减少空白）
+                        }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const index = context.dataIndex;
+                                    const open = openPrices[index];
+                                    const close = closePrices[index];
+                                    const high = highPrices[index];
+                                    const low = lowPrices[index];
+                                    const volume = volumes[index];
+                                    const volumeInWan = volume >= 10000 ? (volume / 10000).toFixed(2) + '万手' : volume + '手';
+                                    return [
+                                        `开盘: ${open.toFixed(2)}`,
+                                        `收盘: ${close.toFixed(2)}`,
+                                        `最高: ${high.toFixed(2)}`,
+                                        `最低: ${low.toFixed(2)}`,
+                                        `成交量: ${volumeInWan}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                display: false  // 隐藏X轴日期标注
+                            },
+                            grid: {
+                                display: true
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            beginAtZero: false,
+                            min: minPrice - padding,
+                            max: maxPrice + padding,
+                            title: {
+                                display: true,
+                                text: '价格'
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'klinePlugin',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const scale = chart.scales.y;
+                        const xScale = chart.scales.x;
+                        const chartArea = chart.chartArea;
+                        
+                        // 计算K线区域和成交量区域的分界线
+                        // K线区域占70%，成交量区域占30%
+                        const klineAreaRatio = 0.7;
+                        const volumeAreaRatio = 0.3;
+                        const klineAreaHeight = chartArea.height * klineAreaRatio;
+                        const volumeAreaHeight = chartArea.height * volumeAreaRatio;
+                        const volumeAreaTop = chartArea.top + klineAreaHeight;
+                        const volumeAreaBottom = chartArea.bottom;
+                        
+                        // 计算每个K线的x位置
+                        const barWidth = xScale.width / labels.length;
+                        const barSpacing = barWidth * 0.2; // 20%的间距
+                        const actualBarWidth = barWidth - barSpacing;
+                        
+                        // 绘制K线实体和上下影线
+                        labels.forEach((label, index) => {
+                            const high = highPrices[index];
+                            const low = lowPrices[index];
+                            const open = openPrices[index];
+                            const close = closePrices[index];
+                            const isUp = close >= open;
+                            
+                            // 计算x位置（K线中心）
+                            const x = xScale.getPixelForValue(index);
+                            
+                            // 使用scale计算Y坐标，然后映射到K线区域
+                            const highYScale = scale.getPixelForValue(high);
+                            const lowYScale = scale.getPixelForValue(low);
+                            const openYScale = scale.getPixelForValue(open);
+                            const closeYScale = scale.getPixelForValue(close);
+                            
+                            // 将Y坐标从整个chartArea映射到K线区域
+                            const scaleTop = chartArea.top;
+                            const scaleBottom = chartArea.bottom;
+                            const scaleHeight = scaleBottom - scaleTop;
+                            
+                            const highY = chartArea.top + (highYScale - scaleTop) * (klineAreaHeight / scaleHeight);
+                            const lowY = chartArea.top + (lowYScale - scaleTop) * (klineAreaHeight / scaleHeight);
+                            const openY = chartArea.top + (openYScale - scaleTop) * (klineAreaHeight / scaleHeight);
+                            const closeY = chartArea.top + (closeYScale - scaleTop) * (klineAreaHeight / scaleHeight);
+                            
+                            ctx.save();
+                            ctx.strokeStyle = isUp ? 'rgba(231, 76, 60, 1)' : 'rgba(39, 174, 96, 1)';
+                            ctx.fillStyle = isUp ? 'rgba(231, 76, 60, 1)' : 'rgba(39, 174, 96, 1)';
+                            ctx.lineWidth = 1;
+                            
+                            // 绘制上影线
+                            ctx.beginPath();
+                            ctx.moveTo(x, Math.min(openY, closeY));
+                            ctx.lineTo(x, highY);
+                            ctx.stroke();
+                            
+                            // 绘制下影线
+                            ctx.beginPath();
+                            ctx.moveTo(x, Math.max(openY, closeY));
+                            ctx.lineTo(x, lowY);
+                            ctx.stroke();
+                            
+                            // 绘制实体（矩形）
+                            const bodyTop = Math.min(openY, closeY);
+                            const bodyBottom = Math.max(openY, closeY);
+                            const bodyHeight = Math.max(1, bodyBottom - bodyTop); // 至少1像素高
+                            const bodyWidth = actualBarWidth * 0.7; // 实体宽度为可用宽度的70%
+                            
+                            ctx.fillRect(x - bodyWidth / 2, bodyTop, bodyWidth, bodyHeight);
+                            
+                            ctx.restore();
+                            
+                            // 绘制成交量柱状图
+                            const volume = volumes[index];
+                            const volumeHeight = (volume / maxVolume) * volumeAreaHeight;
+                            const volumeY = volumeAreaBottom - volumeHeight;
+                            
+                            ctx.save();
+                            ctx.fillStyle = isUp ? 'rgba(231, 76, 60, 0.8)' : 'rgba(39, 174, 96, 0.8)';
+                            ctx.strokeStyle = isUp ? 'rgba(231, 76, 60, 1)' : 'rgba(39, 174, 96, 1)';
+                            ctx.lineWidth = 1;
+                            
+                            // 绘制成交量柱
+                            const volumeBarWidth = actualBarWidth * 0.8;
+                            ctx.fillRect(x - volumeBarWidth / 2, volumeY, volumeBarWidth, volumeHeight);
+                            ctx.strokeRect(x - volumeBarWidth / 2, volumeY, volumeBarWidth, volumeHeight);
+                            
+                            ctx.restore();
+                        });
+                        
+                        // 绘制收盘价折线（映射到K线区域）
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(52, 152, 219, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        let firstPoint = true;
+                        labels.forEach((label, index) => {
+                            const close = closePrices[index];
+                            const x = xScale.getPixelForValue(index);
+                            const closeYScale = scale.getPixelForValue(close);
+                            const scaleTop = chartArea.top;
+                            const scaleBottom = chartArea.bottom;
+                            const scaleHeight = scaleBottom - scaleTop;
+                            const closeY = chartArea.top + (closeYScale - scaleTop) * (klineAreaHeight / scaleHeight);
+                            
+                            if (firstPoint) {
+                                ctx.moveTo(x, closeY);
+                                firstPoint = false;
+                            } else {
+                                ctx.lineTo(x, closeY);
+                            }
+                        });
+                        ctx.stroke();
+                        ctx.restore();
+                        
+                        // 绘制K线区域和成交量区域的分界线
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(chartArea.left, volumeAreaTop);
+                        ctx.lineTo(chartArea.right, volumeAreaTop);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }]
+            });
+        }
+        
+        function renderMACDChart(labels, macdData) {
+            // 销毁现有图表
+            if (macdChart) {
+                macdChart.destroy();
+            }
+            
+            const ctx = document.getElementById('macdChart').getContext('2d');
+            
+            macdChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'DIF',
+                            data: macdData.dif,
+                            borderColor: 'rgba(255, 165, 0, 1)', // 橙黄色（金色）
+                            backgroundColor: 'rgba(255, 165, 0, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false
+                        },
+                        {
+                            label: 'DEA',
+                            data: macdData.dea,
+                            borderColor: 'rgba(231, 76, 60, 1)', // 红色
+                            backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false
+                        },
+                        {
+                            label: 'MACD',
+                            data: macdData.macd,
+                            type: 'bar',
+                            backgroundColor: macdData.macd.map(v => v >= 0 ? 'rgba(231, 76, 60, 0.6)' : 'rgba(39, 174, 96, 0.6)'),
+                            borderColor: macdData.macd.map(v => v >= 0 ? 'rgba(231, 76, 60, 1)' : 'rgba(39, 174, 96, 1)'),
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                display: false  // 隐藏X轴日期标注
+                            }
+                        },
+                        y: {
+                            position: 'right'
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'macdZeroLine',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        const yScale = chart.scales.y;
+                        const xScale = chart.scales.x;
+                        
+                        // 绘制0轴线（黑色虚线）
+                        const zeroY = yScale.getPixelForValue(0);
+                        if (zeroY >= chartArea.top && zeroY <= chartArea.bottom) {
+                            ctx.save();
+                            ctx.strokeStyle = 'rgba(0, 0, 0, 1)'; // 黑色
+                            ctx.lineWidth = 1;
+                            ctx.setLineDash([5, 5]); // 虚线样式
+                            ctx.beginPath();
+                            ctx.moveTo(chartArea.left, zeroY);
+                            ctx.lineTo(chartArea.right, zeroY);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                        
+                        // 检测并绘制MACD金叉
+                        const difData = chart.data.datasets[0].data;
+                        const deaData = chart.data.datasets[1].data;
+                        
+                        for (let i = 1; i < difData.length; i++) {
+                            const prevDif = difData[i - 1];
+                            const currDif = difData[i];
+                            const prevDea = deaData[i - 1];
+                            const currDea = deaData[i];
+                            
+                            // 金叉：前一个点DIF < DEA，当前点DIF >= DEA
+                            if (prevDif !== null && currDif !== null && 
+                                prevDea !== null && currDea !== null &&
+                                prevDif < prevDea && currDif >= currDea) {
+                                
+                                // 计算金叉点的位置（两条线的交点）
+                                const x = xScale.getPixelForValue(i);
+                                // 使用当前点的DIF和DEA的平均值作为Y坐标
+                                const y = (yScale.getPixelForValue(currDif) + yScale.getPixelForValue(currDea)) / 2;
+                                
+                                // 绘制金叉标记（向上箭头）
+                                ctx.save();
+                                ctx.fillStyle = 'rgba(39, 174, 96, 1)'; // 绿色，表示买入信号
+                                ctx.strokeStyle = 'rgba(39, 174, 96, 1)';
+                                ctx.lineWidth = 2;
+                                
+                                // 绘制向上的箭头
+                                const arrowSize = 8;
+                                ctx.beginPath();
+                                ctx.moveTo(x, y - arrowSize);
+                                ctx.lineTo(x - arrowSize / 2, y - arrowSize / 2);
+                                ctx.lineTo(x + arrowSize / 2, y - arrowSize / 2);
+                                ctx.closePath();
+                                ctx.fill();
+                                
+                                // 绘制小圆圈标记
+                                ctx.beginPath();
+                                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                                ctx.fill();
+                                ctx.restore();
+                            }
+                        }
+                    }
+                }]
+            });
+        }
+        
+        function renderKDJChart(labels, kdjData) {
+            // 销毁现有图表
+            if (kdjChart) {
+                kdjChart.destroy();
+            }
+            
+            const ctx = document.getElementById('kdjChart').getContext('2d');
+            
+            kdjChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'K',
+                            data: kdjData.k,
+                            borderColor: 'rgba(155, 89, 182, 1)', // 紫色
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false
+                        },
+                        {
+                            label: 'D',
+                            data: kdjData.d,
+                            borderColor: 'rgba(52, 152, 219, 1)', // 蓝色
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false
+                        },
+                        {
+                            label: 'J',
+                            data: kdjData.j,
+                            borderColor: 'rgba(39, 174, 96, 1)', // 绿色
+                            backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                display: false  // 隐藏X轴日期标注
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'KDJ值'
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'kdjGoldenCross',
+                    afterDatasetsDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const chartArea = chart.chartArea;
+                        const yScale = chart.scales.y;
+                        const xScale = chart.scales.x;
+                        
+                        // 绘制20和80参考线（黑色虚线）
+                        const line20Y = yScale.getPixelForValue(20);
+                        const line80Y = yScale.getPixelForValue(80);
+                        
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 1)'; // 黑色
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([5, 5]); // 虚线样式
+                        
+                        // 绘制20线
+                        if (line20Y >= chartArea.top && line20Y <= chartArea.bottom) {
+                            ctx.beginPath();
+                            ctx.moveTo(chartArea.left, line20Y);
+                            ctx.lineTo(chartArea.right, line20Y);
+                            ctx.stroke();
+                        }
+                        
+                        // 绘制80线
+                        if (line80Y >= chartArea.top && line80Y <= chartArea.bottom) {
+                            ctx.beginPath();
+                            ctx.moveTo(chartArea.left, line80Y);
+                            ctx.lineTo(chartArea.right, line80Y);
+                            ctx.stroke();
+                        }
+                        
+                        ctx.restore();
+                        
+                        // 检测并绘制KDJ金叉
+                        const kData = chart.data.datasets[0].data;
+                        const dData = chart.data.datasets[1].data;
+                        
+                        for (let i = 1; i < kData.length; i++) {
+                            const prevK = kData[i - 1];
+                            const currK = kData[i];
+                            const prevD = dData[i - 1];
+                            const currD = dData[i];
+                            
+                            // 金叉：前一个点K < D，当前点K >= D
+                            if (prevK !== null && currK !== null && 
+                                prevD !== null && currD !== null &&
+                                prevK < prevD && currK >= currD) {
+                                
+                                // 计算金叉点的位置
+                                const x = xScale.getPixelForValue(i);
+                                // 使用当前点的K和D的平均值作为Y坐标
+                                const y = (yScale.getPixelForValue(currK) + yScale.getPixelForValue(currD)) / 2;
+                                
+                                // 绘制金叉标记（向上箭头）
+                                ctx.save();
+                                ctx.fillStyle = 'rgba(39, 174, 96, 1)'; // 绿色，表示买入信号
+                                ctx.strokeStyle = 'rgba(39, 174, 96, 1)';
+                                ctx.lineWidth = 2;
+                                
+                                // 绘制向上的箭头
+                                const arrowSize = 8;
+                                ctx.beginPath();
+                                ctx.moveTo(x, y - arrowSize);
+                                ctx.lineTo(x - arrowSize / 2, y - arrowSize / 2);
+                                ctx.lineTo(x + arrowSize / 2, y - arrowSize / 2);
+                                ctx.closePath();
+                                ctx.fill();
+                                
+                                // 绘制小圆圈标记
+                                ctx.beginPath();
+                                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                                ctx.fill();
+                                ctx.restore();
+                            }
+                        }
+                    }
+                }]
+            });
+        }
+        
+        // 搜索功能（参考stock-analysis.html的逻辑）
+        async function searchStock() {
+            const searchInput = document.getElementById('stock-search-input');
+            const query = searchInput.value.trim();
+            
+            if (!query) {
+                await showAlert('请输入代码或名称', 'warning');
+                return;
+            }
+            
+            // 判断输入是纯数字（代码）还是文本（名称）
+            const isNumericCode = /^\d+$/.test(query);
+            
+            // 用户既然在输入框输入，应该优先从数据库搜索，确保找到所有匹配的标的
+            let matchedStock = null;
+            
+            try {
+                // 使用普通fetch，因为/api/stocks不需要认证
+                const response = await fetch(`${API_BASE}/stocks?keyword=${encodeURIComponent(query)}&page_size=50`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data && result.data.length > 0) {
+                    let candidates = [];
+                    
+                    if (isNumericCode) {
+                        // 输入是纯数字，优先精确匹配代码
+                        candidates = result.data.filter(stock => {
+                            const code = (stock.stock_code || '').trim();
+                            return code === query;
+                        });
+                        
+                        // 如果精确匹配找到多个（如000001可能匹配到1.000001和0.000001），让用户选择
+                        if (candidates.length > 1) {
+                            // 显示选择对话框
+                            const choice = await showStockSelectionDialog(candidates, query);
+                            if (choice) {
+                                matchedStock = choice;
+                            } else {
+                                return; // 用户取消选择
+                            }
+                        } else if (candidates.length === 1) {
+                            matchedStock = candidates[0];
+                        }
+                    } else {
+                        // 输入是文本，优先精确匹配名称
+                        candidates = result.data.filter(stock => {
+                            const code = (stock.stock_code || '').trim();
+                            const name = (stock.stock_name || '').trim();
+                            const queryLower = query.toLowerCase();
+                            return code.toLowerCase() === queryLower || 
+                                   name.toLowerCase() === queryLower;
+                        });
+                        
+                        // 如果没有精确匹配，尝试大小写不敏感的匹配
+                        if (candidates.length === 0) {
+                            candidates = result.data.filter(stock => {
+                                const code = (stock.stock_code || '').trim();
+                                const name = (stock.stock_name || '').trim();
+                                const queryLower = query.toLowerCase();
+                                return name.toLowerCase().includes(queryLower);
+                            });
+                        }
+                        
+                        // 如果找到多个匹配，显示选择对话框
+                        if (candidates.length > 1) {
+                            const choice = await showStockSelectionDialog(candidates, query);
+                            if (choice) {
+                                matchedStock = choice;
+                            } else {
+                                return; // 用户取消选择
+                            }
+                        } else if (candidates.length === 1) {
+                            matchedStock = candidates[0];
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('搜索失败:', error);
+                await showAlert('搜索失败，请稍后重试', 'error');
+                return;
+            }
+            
+            if (matchedStock) {
+                // 找到匹配的标的
+                // 检查是否在下拉框中，如果不在则添加
+                const selector = document.getElementById('stock-selector');
+                let optionExists = false;
+                for (let i = 0; i < selector.options.length; i++) {
+                    if (selector.options[i].value === matchedStock.secid) {
+                        optionExists = true;
+                        break;
+                    }
+                }
+                
+                // 如果不在下拉框中，添加到下拉框
+                if (!optionExists) {
+                    const option = document.createElement('option');
+                    option.value = matchedStock.secid;
+                    const displayName = matchedStock.is_index 
+                        ? `📈 ${matchedStock.stock_code} ${matchedStock.stock_name || ''}`
+                        : `${matchedStock.stock_code} ${matchedStock.stock_name || ''}`;
+                    option.textContent = displayName;
+                    selector.appendChild(option);
+                    
+                    // 同时添加到本地列表
+                    if (!stockList.find(s => s.secid === matchedStock.secid)) {
+                        stockList.push(matchedStock);
+                    }
+                }
+                
+                // 选中并加载数据
+                selector.value = matchedStock.secid;
+                await loadTechnicalData(matchedStock.secid);
+                // 清空搜索框
+                searchInput.value = '';
+            } else {
+                // 未找到匹配的标的
+                await showAlert(`未找到代码或名称为"${query}"的标的，请检查输入是否正确`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>
