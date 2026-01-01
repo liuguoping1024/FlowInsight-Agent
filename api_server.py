@@ -427,6 +427,206 @@ def get_stock_history(secid):
         return jsonify({'code': -1, 'message': str(e)}), 500
 
 
+@app.route('/api/stocks/<secid>/kline', methods=['GET'])
+@require_auth
+def get_stock_kline(secid):
+    """获取股票日K线历史数据"""
+    try:
+        from datetime import date, timedelta
+        
+        limit = int(request.args.get('limit', 60))  # 默认60个交易日
+        days = int(request.args.get('days', 90))  # 默认90天内
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # 如果没有指定日期范围，使用90天内的数据
+        if not start_date and not end_date:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=days)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+            end_date_str = end_date.strftime('%Y-%m-%d')
+        elif start_date and end_date:
+            start_date_str = start_date
+            end_date_str = end_date
+        else:
+            # 如果只指定了end_date，往前推90天
+            if end_date:
+                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                start_date_obj = end_date_obj - timedelta(days=days)
+                start_date_str = start_date_obj.strftime('%Y-%m-%d')
+                end_date_str = end_date
+            else:
+                # 如果只指定了start_date，往后推90天
+                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_date_obj = start_date_obj + timedelta(days=days)
+                start_date_str = start_date
+                end_date_str = end_date_obj.strftime('%Y-%m-%d')
+        
+        # 查询日K线数据
+        sql = """
+        SELECT trade_date,
+               open_price,
+               close_price,
+               high_price,
+               low_price,
+               volume,
+               amount,
+               amplitude,
+               change_percent,
+               change_amount,
+               turnover_rate
+        FROM stock_day_lines_history
+        WHERE secid = %s AND trade_date BETWEEN %s AND %s
+        ORDER BY trade_date ASC
+        LIMIT %s
+        """
+        kline_data = db.execute_query(sql, (secid, start_date_str, end_date_str, limit))
+        
+        # 处理Decimal类型
+        from decimal import Decimal
+        result = []
+        for item in kline_data:
+            def to_float(value):
+                if value is None:
+                    return None
+                if isinstance(value, Decimal):
+                    return float(value)
+                return float(value)
+            
+            result.append({
+                'trade_date': item['trade_date'].strftime('%Y-%m-%d') if isinstance(item['trade_date'], date) else str(item['trade_date']),
+                'open_price': to_float(item.get('open_price')),
+                'close_price': to_float(item.get('close_price')),
+                'high_price': to_float(item.get('high_price')),
+                'low_price': to_float(item.get('low_price')),
+                'volume': int(item['volume']) if item.get('volume') is not None else None,
+                'amount': to_float(item.get('amount')),
+                'amplitude': to_float(item.get('amplitude')),
+                'change_percent': to_float(item.get('change_percent')),
+                'change_amount': to_float(item.get('change_amount')),
+                'turnover_rate': to_float(item.get('turnover_rate'))
+            })
+        
+        return jsonify({'code': 0, 'data': result})
+    except Exception as e:
+        logger.error(f"Failed to get stock kline data: {e}")
+        return jsonify({'code': -1, 'message': str(e)}), 500
+
+
+@app.route('/api/stocks/<secid>/combined', methods=['GET'])
+@require_auth
+def get_stock_combined(secid):
+    """获取股票日K线数据 + 资金流向数据（联合查询）"""
+    try:
+        from datetime import date, timedelta
+        
+        limit = int(request.args.get('limit', 60))  # 默认60个交易日
+        days = int(request.args.get('days', 90))  # 默认90天内
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        # 如果没有指定日期范围，使用90天内的数据
+        if not start_date and not end_date:
+            end_date = date.today()
+            start_date = end_date - timedelta(days=days)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+            end_date_str = end_date.strftime('%Y-%m-%d')
+        elif start_date and end_date:
+            start_date_str = start_date
+            end_date_str = end_date
+        else:
+            # 如果只指定了end_date，往前推90天
+            if end_date:
+                end_date_obj = datetime.strptime(end_date, '%Y-%m-%d').date()
+                start_date_obj = end_date_obj - timedelta(days=days)
+                start_date_str = start_date_obj.strftime('%Y-%m-%d')
+                end_date_str = end_date
+            else:
+                # 如果只指定了start_date，往后推90天
+                start_date_obj = datetime.strptime(start_date, '%Y-%m-%d').date()
+                end_date_obj = start_date_obj + timedelta(days=days)
+                start_date_str = start_date
+                end_date_str = end_date_obj.strftime('%Y-%m-%d')
+        
+        # 联合查询：日K线 + 资金流向
+        sql = """
+        SELECT 
+            k.trade_date,
+            -- K线数据
+            k.open_price,
+            k.close_price,
+            k.high_price,
+            k.low_price,
+            k.volume,
+            k.amount,
+            k.amplitude,
+            k.change_percent as kline_change_percent,
+            k.change_amount,
+            k.turnover_rate,
+            -- 资金流向数据
+            c.main_net_inflow,
+            c.super_large_net_inflow,
+            c.large_net_inflow,
+            c.medium_net_inflow,
+            c.small_net_inflow,
+            c.main_net_inflow_ratio,
+            c.close_price as capital_flow_close_price,
+            c.change_percent as capital_flow_change_percent
+        FROM stock_day_lines_history k
+        LEFT JOIN stock_capital_flow_history c 
+            ON k.secid = c.secid 
+            AND k.trade_date = c.trade_date
+        WHERE k.secid = %s AND k.trade_date BETWEEN %s AND %s
+        ORDER BY k.trade_date ASC
+        LIMIT %s
+        """
+        combined_data = db.execute_query(sql, (secid, start_date_str, end_date_str, limit))
+        
+        # 处理Decimal类型
+        from decimal import Decimal
+        result = []
+        for item in combined_data:
+            def to_float(value):
+                if value is None:
+                    return None
+                if isinstance(value, Decimal):
+                    return float(value)
+                return float(value)
+            
+            result.append({
+                'trade_date': item['trade_date'].strftime('%Y-%m-%d') if isinstance(item['trade_date'], date) else str(item['trade_date']),
+                # K线数据
+                'kline': {
+                    'open_price': to_float(item.get('open_price')),
+                    'close_price': to_float(item.get('close_price')),
+                    'high_price': to_float(item.get('high_price')),
+                    'low_price': to_float(item.get('low_price')),
+                    'volume': int(item['volume']) if item.get('volume') is not None else None,
+                    'amount': to_float(item.get('amount')),
+                    'amplitude': to_float(item.get('amplitude')),
+                    'change_percent': to_float(item.get('kline_change_percent')),
+                    'change_amount': to_float(item.get('change_amount')),
+                    'turnover_rate': to_float(item.get('turnover_rate'))
+                },
+                # 资金流向数据
+                'capital_flow': {
+                    'main_net_inflow': to_float(item.get('main_net_inflow')),
+                    'super_large_net_inflow': to_float(item.get('super_large_net_inflow')),
+                    'large_net_inflow': to_float(item.get('large_net_inflow')),
+                    'medium_net_inflow': to_float(item.get('medium_net_inflow')),
+                    'small_net_inflow': to_float(item.get('small_net_inflow')),
+                    'main_net_inflow_ratio': to_float(item.get('main_net_inflow_ratio')),
+                    'close_price': to_float(item.get('capital_flow_close_price')),
+                    'change_percent': to_float(item.get('capital_flow_change_percent'))
+                }
+            })
+        
+        return jsonify({'code': 0, 'data': result})
+    except Exception as e:
+        logger.error(f"Failed to get stock combined data: {e}")
+        return jsonify({'code': -1, 'message': str(e)}), 500
+
+
 # ==================== 实时数据API ====================
 
 @app.route('/api/realtime/capital-flow', methods=['GET'])

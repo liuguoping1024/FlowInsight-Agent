@@ -13,7 +13,8 @@ from services.eastmoney_api import (
     get_all_a_stocks,
     get_realtime_quotes,
     get_history_capital_flow,
-    get_latest_quotes
+    get_latest_quotes,
+    get_kline_data
 )
 
 logger = logging.getLogger(__name__)
@@ -614,4 +615,266 @@ class DataCollector:
             logger.info(f"Index data sync successful, {affected} records")
         except Exception as e:
             logger.error(f"Failed to sync index data to database: {e}")
+    
+    def get_stock_day_kline_history(
+        self, 
+        secid: str, 
+        beg: str = None, 
+        end: str = None,
+        fqt: int = 1
+    ) -> List[Dict]:
+        """
+        从API获取股票日K线历史数据
+        
+        Args:
+            secid: 完整代码，格式：market_code.stock_code
+            beg: 开始日期，格式：YYYYMMDD（如 '20240101'），默认为最早日期
+            end: 结束日期，格式：YYYYMMDD（如 '20241231'），默认为最新日期
+            fqt: 复权类型（0=不复权，1=前复权，2=后复权），默认1
+        
+        Returns:
+            日K线数据列表
+        """
+        try:
+            # 解析 secid
+            parts = secid.split('.')
+            if len(parts) != 2:
+                logger.error(f"Invalid secid format: {secid}")
+                return []
+            
+            market_code = int(parts[0])
+            stock_code = parts[1]
+            
+            # 获取所有字段（f51-f61）
+            fields2 = "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61"
+            
+            # 调用API获取K线数据
+            df = get_kline_data(
+                code=stock_code,
+                klt=101,  # 日线
+                fqt=fqt,
+                beg=beg,
+                end=end,
+                market=market_code,
+                fields2=fields2,
+                timeout=10
+            )
+            
+            if df.empty:
+                logger.warning(f"No kline data returned for {secid}")
+                return []
+            
+            # 转换为字典列表
+            result = []
+            for _, row in df.iterrows():
+                # 解析日期（f51是时间字段，日K线格式为 YYYY-MM-DD）
+                trade_date = row['f51']
+                if isinstance(trade_date, pd.Timestamp):
+                    trade_date = trade_date.date()
+                elif isinstance(trade_date, str):
+                    from datetime import datetime as dt
+                    trade_date = dt.strptime(trade_date.split()[0], '%Y-%m-%d').date()
+                
+                # 构建原始数据JSON
+                raw_data = {
+                    'f51': str(row['f51']),
+                    'f52': float(row['f52']) if pd.notna(row['f52']) else None,
+                    'f53': float(row['f53']) if pd.notna(row['f53']) else None,
+                    'f54': float(row['f54']) if pd.notna(row['f54']) else None,
+                    'f55': float(row['f55']) if pd.notna(row['f55']) else None,
+                    'f56': int(row['f56']) if pd.notna(row['f56']) else None,
+                    'f57': float(row['f57']) if pd.notna(row['f57']) else None,
+                    'f58': float(row['f58']) if pd.notna(row['f58']) else None,
+                    'f59': float(row['f59']) if pd.notna(row['f59']) else None,
+                    'f60': float(row['f60']) if pd.notna(row['f60']) else None,
+                    'f61': float(row['f61']) if pd.notna(row['f61']) else None,
+                }
+                
+                result.append({
+                    'stock_code': stock_code,
+                    'market_code': market_code,
+                    'secid': secid,
+                    'trade_date': trade_date,
+                    'open_price': float(row['f52']) if pd.notna(row['f52']) else None,
+                    'close_price': float(row['f53']) if pd.notna(row['f53']) else None,
+                    'high_price': float(row['f54']) if pd.notna(row['f54']) else None,
+                    'low_price': float(row['f55']) if pd.notna(row['f55']) else None,
+                    'volume': int(row['f56']) if pd.notna(row['f56']) else None,
+                    'amount': float(row['f57']) if pd.notna(row['f57']) else None,
+                    'amplitude': float(row['f58']) if pd.notna(row['f58']) else None,
+                    'change_percent': float(row['f59']) if pd.notna(row['f59']) else None,
+                    'change_amount': float(row['f60']) if pd.notna(row['f60']) else None,
+                    'turnover_rate': float(row['f61']) if pd.notna(row['f61']) else None,
+                    'raw_data': raw_data
+                })
+            
+            logger.info(f"Successfully fetched {len(result)} day kline records for {secid}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get stock day kline history data: {e}, secid: {secid}")
+            return []
+    
+    def sync_stock_day_kline_history(
+        self, 
+        secid: str, 
+        beg: str = None, 
+        end: str = None,
+        fqt: int = 1
+    ) -> Dict:
+        """
+        同步个股日K线历史数据到数据库（增强版，包含同步前后检查）
+        返回同步结果统计
+        
+        Args:
+            secid: 完整代码，格式：market_code.stock_code
+            beg: 开始日期，格式：YYYYMMDD（如 '20240101'），默认为最早日期
+            end: 结束日期，格式：YYYYMMDD（如 '20241231'），默认为最新日期
+            fqt: 复权类型（0=不复权，1=前复权，2=后复权），默认1
+        
+        Returns:
+            同步结果统计
+        """
+        result = {
+            'secid': secid,
+            'success': False,
+            'message': '',
+            'before_sync': {},
+            'after_sync': {},
+            'sync_stats': {
+                'api_returned_days': 0,
+                'new_days': 0,
+                'updated_days': 0,
+                'date_range': {}
+            }
+        }
+        
+        # 1. 同步前检查：查询数据库中已有的数据范围
+        try:
+            sql_before = """
+            SELECT 
+                MIN(trade_date) as earliest_date,
+                MAX(trade_date) as latest_date,
+                COUNT(*) as total_records
+            FROM stock_day_lines_history
+            WHERE secid = %s
+            """
+            before_data = db.execute_query(sql_before, (secid,))
+            if before_data and before_data[0]['earliest_date']:
+                result['before_sync'] = {
+                    'earliest_date': str(before_data[0]['earliest_date']),
+                    'latest_date': str(before_data[0]['latest_date']),
+                    'total_records': before_data[0]['total_records']
+                }
+            else:
+                result['before_sync'] = {
+                    'earliest_date': None,
+                    'latest_date': None,
+                    'total_records': 0
+                }
+        except Exception as e:
+            logger.warning(f"Pre-sync check failed: {e}")
+            result['before_sync'] = {'error': str(e)}
+        
+        # 2. 从API获取数据
+        history_data = self.get_stock_day_kline_history(secid, beg, end, fqt)
+        if not history_data:
+            result['message'] = f'未获取到日K线历史数据: {secid}'
+            logger.warning(result['message'])
+            return result
+        
+        # 统计API返回的数据
+        api_dates = [d['trade_date'] for d in history_data]
+        result['sync_stats']['api_returned_days'] = len(history_data)
+        result['sync_stats']['date_range'] = {
+            'earliest': str(min(api_dates)) if api_dates else None,
+            'latest': str(max(api_dates)) if api_dates else None
+        }
+        
+        # 3. 检查哪些是新数据，哪些是更新数据
+        if result['before_sync'].get('total_records', 0) > 0:
+            # 查询数据库中已存在的日期
+            sql_existing = """
+            SELECT trade_date
+            FROM stock_day_lines_history
+            WHERE secid = %s
+            """
+            existing_dates = {row['trade_date'] for row in db.execute_query(sql_existing, (secid,))}
+            
+            new_dates = [d for d in api_dates if d not in existing_dates]
+            update_dates = [d for d in api_dates if d in existing_dates]
+            
+            result['sync_stats']['new_days'] = len(new_dates)
+            result['sync_stats']['updated_days'] = len(update_dates)
+        else:
+            # 首次同步，全部是新数据
+            result['sync_stats']['new_days'] = len(history_data)
+            result['sync_stats']['updated_days'] = 0
+        
+        # 4. 执行数据库插入/更新
+        import json
+        sql = """
+        INSERT INTO stock_day_lines_history (
+            stock_code, market_code, secid, trade_date,
+            open_price, close_price, high_price, low_price,
+            volume, amount, amplitude, change_percent,
+            change_amount, turnover_rate, raw_data
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE
+            open_price = VALUES(open_price),
+            close_price = VALUES(close_price),
+            high_price = VALUES(high_price),
+            low_price = VALUES(low_price),
+            volume = VALUES(volume),
+            amount = VALUES(amount),
+            amplitude = VALUES(amplitude),
+            change_percent = VALUES(change_percent),
+            change_amount = VALUES(change_amount),
+            turnover_rate = VALUES(turnover_rate),
+            raw_data = VALUES(raw_data),
+            updated_at = NOW()
+        """
+        
+        params_list = [
+            (
+                d['stock_code'], d['market_code'], d['secid'], d['trade_date'],
+                d['open_price'], d['close_price'], d['high_price'], d['low_price'],
+                d['volume'], d['amount'], d['amplitude'], d['change_percent'],
+                d['change_amount'], d['turnover_rate'], json.dumps(d['raw_data'], ensure_ascii=False)
+            )
+            for d in history_data
+        ]
+        
+        try:
+            db.execute_many(sql, params_list)
+            result['success'] = True
+            result['message'] = f'同步成功，新增 {result["sync_stats"]["new_days"]} 条，更新 {result["sync_stats"]["updated_days"]} 条'
+            logger.info(f"Day kline sync successful for {secid}: {result['message']}")
+            
+            # 5. 同步后检查
+            try:
+                sql_after = """
+                SELECT 
+                    MIN(trade_date) as earliest_date,
+                    MAX(trade_date) as latest_date,
+                    COUNT(*) as total_records
+                FROM stock_day_lines_history
+                WHERE secid = %s
+                """
+                after_data = db.execute_query(sql_after, (secid,))
+                if after_data and after_data[0]['earliest_date']:
+                    result['after_sync'] = {
+                        'earliest_date': str(after_data[0]['earliest_date']),
+                        'latest_date': str(after_data[0]['latest_date']),
+                        'total_records': after_data[0]['total_records']
+                    }
+            except Exception as e:
+                logger.warning(f"Post-sync check failed: {e}")
+                result['after_sync'] = {'error': str(e)}
+            
+        except Exception as e:
+            result['message'] = f'数据库操作失败: {str(e)}'
+            logger.error(f"Failed to sync day kline data to database: {e}, secid: {secid}")
+        
+        return result
 

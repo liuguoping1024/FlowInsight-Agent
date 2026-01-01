@@ -11,6 +11,14 @@
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
         }
         
         .card {
@@ -19,6 +27,15 @@
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .card {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
         }
         
         .card-title {
@@ -96,6 +113,15 @@
             position: relative;
             height: 400px;
             margin-top: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+                margin-top: 15px;
+            }
         }
         
         .chart-title {
@@ -103,6 +129,197 @@
             font-weight: bold;
             margin-bottom: 15px;
             color: #333;
+        }
+        
+        /* 响应式：资金流向统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stats-card {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-sizing: border-box;
+        }
+        
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            
+            .stats-card {
+                padding: 12px;
+            }
+        }
+        
+        /* 自定义对话框样式 */
+        .custom-dialog-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .custom-dialog {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 90%;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: slideUp 0.3s ease-out;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        .custom-dialog-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .custom-dialog-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        
+        .custom-dialog-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #999;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .custom-dialog-close:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .custom-dialog-body {
+            padding: 24px;
+            color: #666;
+            line-height: 1.6;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .custom-dialog-footer {
+            padding: 16px 24px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .custom-dialog-button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        
+        .custom-dialog-button-primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .custom-dialog-button-primary:hover {
+            background: #5568d3;
+        }
+        
+        .custom-dialog-button-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .custom-dialog-button-secondary:hover {
+            background: #e0e0e0;
+        }
+        
+        .custom-dialog-icon {
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 12px;
+            opacity: 0.8;
+        }
+        
+        .custom-dialog-icon.error {
+            color: #e74c3c;
+        }
+        
+        .custom-dialog-icon.warning {
+            color: #f39c12;
+        }
+        
+        .custom-dialog-icon.info {
+            color: #3498db;
+        }
+        
+        .custom-dialog-icon.success {
+            color: #27ae60;
+        }
+        
+        @media (max-width: 768px) {
+            .custom-dialog {
+                width: 95%;
+                max-width: none;
+            }
+            
+            .custom-dialog-header,
+            .custom-dialog-body,
+            .custom-dialog-footer {
+                padding: 16px;
+            }
         }
     </style>
 </head>
@@ -158,8 +375,103 @@
         
         let barChart = null;
         let lineChart = null;
-        let cumulativeChart = null;
         let stockList = []; // 保存股票列表用于搜索
+        
+        // 自定义对话框函数
+        function showCustomDialog(options) {
+            return new Promise((resolve) => {
+                const {
+                    title = '提示',
+                    message = '',
+                    type = 'info', // info, success, warning, error
+                    confirmText = '确定',
+                    cancelText = '取消',
+                    showCancel = false,
+                    onConfirm = null,
+                    onCancel = null
+                } = options;
+                
+                // 创建遮罩层
+                const overlay = document.createElement('div');
+                overlay.className = 'custom-dialog-overlay';
+                overlay.onclick = (e) => {
+                    if (e.target === overlay && showCancel) {
+                        document.body.removeChild(overlay);
+                        if (onCancel) onCancel();
+                        resolve(false);
+                    }
+                };
+                
+                // 创建对话框
+                const dialog = document.createElement('div');
+                dialog.className = 'custom-dialog';
+                dialog.onclick = (e) => e.stopPropagation();
+                
+                // 图标映射（使用更小的图标）
+                const iconMap = {
+                    error: '✕',
+                    warning: '⚠',
+                    info: 'ℹ',
+                    success: '✓'
+                };
+                
+                dialog.innerHTML = `
+                    <div class="custom-dialog-header">
+                        <h3 class="custom-dialog-title">${title}</h3>
+                        ${showCancel ? `<button class="custom-dialog-close" onclick="this.closest('.custom-dialog-overlay').remove()">×</button>` : ''}
+                    </div>
+                    <div class="custom-dialog-body">
+                        <div class="custom-dialog-icon ${type}">${iconMap[type] || iconMap.info}</div>
+                        <div style="text-align: center; font-size: 15px;">${message}</div>
+                    </div>
+                    <div class="custom-dialog-footer">
+                        ${showCancel ? `<button class="custom-dialog-button custom-dialog-button-secondary" id="dialog-cancel">${cancelText}</button>` : ''}
+                        <button class="custom-dialog-button custom-dialog-button-primary" id="dialog-confirm">${confirmText}</button>
+                    </div>
+                `;
+                
+                overlay.appendChild(dialog);
+                document.body.appendChild(overlay);
+                
+                // 绑定事件
+                const confirmBtn = dialog.querySelector('#dialog-confirm');
+                confirmBtn.onclick = () => {
+                    document.body.removeChild(overlay);
+                    if (onConfirm) onConfirm();
+                    resolve(true);
+                };
+                
+                if (showCancel) {
+                    const cancelBtn = dialog.querySelector('#dialog-cancel');
+                    cancelBtn.onclick = () => {
+                        document.body.removeChild(overlay);
+                        if (onCancel) onCancel();
+                        resolve(false);
+                    };
+                }
+                
+                // ESC键关闭
+                const handleEsc = (e) => {
+                    if (e.key === 'Escape' && showCancel) {
+                        document.removeEventListener('keydown', handleEsc);
+                        document.body.removeChild(overlay);
+                        if (onCancel) onCancel();
+                        resolve(false);
+                    }
+                };
+                document.addEventListener('keydown', handleEsc);
+            });
+        }
+        
+        // 简化的提示函数（替换alert）
+        function showAlert(message, type = 'info') {
+            return showCustomDialog({
+                title: type === 'error' ? '错误' : type === 'warning' ? '警告' : type === 'success' ? '成功' : '提示',
+                message: message,
+                type: type,
+                showCancel: false
+            });
+        }
         
         async function loadStockSelector() {
             const selector = document.getElementById('stock-selector');
@@ -220,10 +532,6 @@
                     barChart.destroy();
                     barChart = null;
                 }
-                if (cumulativeChart) {
-                    cumulativeChart.destroy();
-                    cumulativeChart = null;
-                }
                 if (lineChart) {
                     lineChart.destroy();
                     lineChart = null;
@@ -259,28 +567,61 @@
             const query = searchInput.value.trim();
             
             if (!query) {
-                alert('请输入股票代码或股票名称');
+                await showAlert('请输入股票代码或股票名称', 'warning');
                 return;
             }
             
+            // 判断输入是纯数字（股票代码）还是文本（股票名称）
+            const isNumericCode = /^\d+$/.test(query);
+            
             // 先从本地股票列表搜索（快速匹配）
-            let matchedStock = stockList.find(stock => {
-                const code = stock.stock_code || '';
-                const name = stock.stock_name || '';
+            let matchedStocks = [];
+            
+            if (isNumericCode) {
+                // 输入是纯数字，优先精确匹配股票代码
+                matchedStocks = stockList.filter(stock => {
+                    const code = (stock.stock_code || '').trim();
+                    return code === query;
+                });
+            } else {
+                // 输入是文本，匹配股票名称
                 const queryLower = query.toLowerCase();
-                return code.toLowerCase() === queryLower || 
-                       name.toLowerCase() === queryLower ||
-                       code === query ||
-                       name === query ||
-                       name.toLowerCase().includes(queryLower) ||
-                       code.includes(query);
-            });
+                matchedStocks = stockList.filter(stock => {
+                    const code = (stock.stock_code || '').trim();
+                    const name = (stock.stock_name || '').trim();
+                    // 优先精确匹配
+                    if (code.toLowerCase() === queryLower || name.toLowerCase() === queryLower) {
+                        return true;
+                    }
+                    // 然后模糊匹配
+                    return name.toLowerCase().includes(queryLower) || 
+                           code.toLowerCase().includes(queryLower);
+                });
+            }
+            
+            let matchedStock = null;
+            
+            // 如果本地找到匹配
+            if (matchedStocks.length > 0) {
+                // 如果只有一个匹配，直接使用
+                if (matchedStocks.length === 1) {
+                    matchedStock = matchedStocks[0];
+                } else {
+                    // 如果有多个匹配，显示选择对话框
+                    const choice = await showStockSelectionDialog(matchedStocks, query);
+                    if (choice) {
+                        matchedStock = choice;
+                    } else {
+                        return; // 用户取消选择
+                    }
+                }
+            }
             
             // 如果本地没找到，从数据库搜索
             if (!matchedStock) {
                 try {
                     // 使用普通fetch，因为/api/stocks不需要认证
-                    const response = await fetch(`${API_BASE}/stocks?keyword=${encodeURIComponent(query)}&page_size=20`);
+                    const response = await fetch(`${API_BASE}/stocks?keyword=${encodeURIComponent(query)}&page_size=50`);
                     if (!response.ok) {
                         throw new Error(`HTTP ${response.status}`);
                     }
@@ -288,27 +629,58 @@
                     const result = await response.json();
                     
                     if (result.code === 0 && result.data && result.data.length > 0) {
-                        // 优先精确匹配（代码或名称完全匹配）
-                        matchedStock = result.data.find(stock => {
-                            const code = (stock.stock_code || '').trim();
-                            const name = (stock.stock_name || '').trim();
-                            return code === query || name === query;
-                        });
+                        let candidates = [];
                         
-                        // 如果没有精确匹配，尝试大小写不敏感的匹配
-                        if (!matchedStock) {
-                            matchedStock = result.data.find(stock => {
+                        if (isNumericCode) {
+                            // 输入是纯数字，优先精确匹配股票代码
+                            candidates = result.data.filter(stock => {
+                                const code = (stock.stock_code || '').trim();
+                                return code === query;
+                            });
+                            
+                            // 如果精确匹配找到多个（如000001可能匹配到1.000001和0.000001），让用户选择
+                            if (candidates.length > 1) {
+                                // 显示选择对话框
+                                const choice = await showStockSelectionDialog(candidates, query);
+                                if (choice) {
+                                    matchedStock = choice;
+                                } else {
+                                    return; // 用户取消选择
+                                }
+                            } else if (candidates.length === 1) {
+                                matchedStock = candidates[0];
+                            }
+                        } else {
+                            // 输入是文本，优先精确匹配名称
+                            candidates = result.data.filter(stock => {
                                 const code = (stock.stock_code || '').trim();
                                 const name = (stock.stock_name || '').trim();
                                 const queryLower = query.toLowerCase();
                                 return code.toLowerCase() === queryLower || 
                                        name.toLowerCase() === queryLower;
                             });
-                        }
-                        
-                        // 如果还是没有精确匹配，使用第一个结果（模糊匹配的结果）
-                        if (!matchedStock) {
-                            matchedStock = result.data[0];
+                            
+                            // 如果没有精确匹配，尝试大小写不敏感的匹配
+                            if (candidates.length === 0) {
+                                candidates = result.data.filter(stock => {
+                                    const code = (stock.stock_code || '').trim();
+                                    const name = (stock.stock_name || '').trim();
+                                    const queryLower = query.toLowerCase();
+                                    return name.toLowerCase().includes(queryLower);
+                                });
+                            }
+                            
+                            // 如果找到多个匹配，显示选择对话框
+                            if (candidates.length > 1) {
+                                const choice = await showStockSelectionDialog(candidates, query);
+                                if (choice) {
+                                    matchedStock = choice;
+                                } else {
+                                    return; // 用户取消选择
+                                }
+                            } else if (candidates.length === 1) {
+                                matchedStock = candidates[0];
+                            }
                         }
                     }
                 } catch (error) {
@@ -317,12 +689,119 @@
             }
             
             if (matchedStock) {
-                // 找到匹配的股票，加载数据
+                // 找到匹配的股票
+                // 检查是否在下拉框中，如果不在则添加
+                const selector = document.getElementById('stock-selector');
+                let optionExists = false;
+                for (let i = 0; i < selector.options.length; i++) {
+                    if (selector.options[i].value === matchedStock.secid) {
+                        optionExists = true;
+                        break;
+                    }
+                }
+                
+                // 如果不在下拉框中，添加到下拉框
+                if (!optionExists) {
+                    const option = document.createElement('option');
+                    option.value = matchedStock.secid;
+                    const displayName = matchedStock.is_index 
+                        ? `📈 ${matchedStock.stock_code} ${matchedStock.stock_name || ''}`
+                        : `${matchedStock.stock_code} ${matchedStock.stock_name || ''}`;
+                    option.textContent = displayName;
+                    selector.appendChild(option);
+                    
+                    // 同时添加到本地股票列表
+                    if (!stockList.find(s => s.secid === matchedStock.secid)) {
+                        stockList.push(matchedStock);
+                    }
+                }
+                
+                // 选中并加载数据
+                selector.value = matchedStock.secid;
                 await loadStockHistory(matchedStock.secid);
+                // 清空搜索框
+                searchInput.value = '';
             } else {
                 // 未找到匹配的股票
-                alert(`未找到股票代码或名称为"${query}"的股票，请检查输入是否正确`);
+                await showAlert(`未找到股票代码或名称为"${query}"的股票，请检查输入是否正确`, 'error');
             }
+        }
+        
+        // 显示股票选择对话框（当有多个匹配结果时）
+        function showStockSelectionDialog(stocks, query) {
+            return new Promise((resolve) => {
+                // 创建对话框HTML
+                const dialog = document.createElement('div');
+                dialog.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 10000;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                `;
+                
+                const content = document.createElement('div');
+                content.style.cssText = `
+                    background: white;
+                    padding: 20px;
+                    border-radius: 10px;
+                    max-width: 500px;
+                    width: 90%;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                `;
+                
+                content.innerHTML = `
+                    <h3 style="margin-top: 0;">找到多个匹配结果（${query}）</h3>
+                    <p style="color: #666; margin-bottom: 15px;">请选择要查询的股票：</p>
+                    <div id="stock-selection-list" style="margin-bottom: 15px;"></div>
+                    <div style="text-align: right;">
+                        <button id="cancel-selection" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; background: white; border-radius: 5px; cursor: pointer;">取消</button>
+                    </div>
+                `;
+                
+                const list = content.querySelector('#stock-selection-list');
+                stocks.forEach((stock, index) => {
+                    const item = document.createElement('div');
+                    item.style.cssText = `
+                        padding: 12px;
+                        margin-bottom: 8px;
+                        border: 1px solid #ddd;
+                        border-radius: 5px;
+                        cursor: pointer;
+                        transition: background 0.2s;
+                    `;
+                    item.onmouseover = () => item.style.background = '#f5f5f5';
+                    item.onmouseout = () => item.style.background = 'white';
+                    item.onclick = () => {
+                        document.body.removeChild(dialog);
+                        resolve(stock);
+                    };
+                    
+                    const isIndex = stock.secid === '1.000001' || stock.secid === '0.399001';
+                    item.innerHTML = `
+                        <div style="font-weight: bold;">${stock.stock_code} ${stock.stock_name || ''}</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            ${isIndex ? '📈 指数' : '📊 股票'} | ${stock.secid}
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+                
+                const cancelBtn = content.querySelector('#cancel-selection');
+                cancelBtn.onclick = () => {
+                    document.body.removeChild(dialog);
+                    resolve(null);
+                };
+                
+                dialog.appendChild(content);
+                document.body.appendChild(dialog);
+            });
         }
         
         function renderCharts(data) {
@@ -372,40 +851,40 @@
             
             // 创建HTML结构（统计信息 + 3 个图表：当日净流向 / 累积图 / 不同玩家曲线）
             content.innerHTML = `
-                <div class="card" style="margin-bottom: 20px;">
+                <div class="card">
                     <div class="card-title">📈 资金流向统计</div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 15px;">
-                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                    <div class="stats-grid">
+                        <div class="stats-card">
                             <div style="font-size: 12px; color: #666; margin-bottom: 5px;">当日</div>
                             <div style="font-size: 18px; font-weight: bold; color: ${latestDay >= 0 ? '#e74c3c' : '#27ae60'};">
                                 ${formatMoney(latestDay)}
                             </div>
                         </div>
-                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div class="stats-card">
                             <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近3个交易日</div>
                             <div style="font-size: 18px; font-weight: bold; color: ${last3Days >= 0 ? '#e74c3c' : '#27ae60'};">
                                 ${formatMoney(last3Days)}
                             </div>
                         </div>
-                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div class="stats-card">
                             <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近5个交易日</div>
                             <div style="font-size: 18px; font-weight: bold; color: ${last5Days >= 0 ? '#e74c3c' : '#27ae60'};">
                                 ${formatMoney(last5Days)}
                             </div>
                         </div>
-                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div class="stats-card">
                             <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近10个交易日</div>
                             <div style="font-size: 18px; font-weight: bold; color: ${last10Days >= 0 ? '#e74c3c' : '#27ae60'};">
                                 ${formatMoney(last10Days)}
                             </div>
                         </div>
-                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div class="stats-card">
                             <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近20个交易日</div>
                             <div style="font-size: 18px; font-weight: bold; color: ${last20Days >= 0 ? '#e74c3c' : '#27ae60'};">
                                 ${formatMoney(last20Days)}
                             </div>
                         </div>
-                        <div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea;">
+                        <div class="stats-card">
                             <div style="font-size: 12px; color: #666; margin-bottom: 5px;">最近60个交易日</div>
                             <div style="font-size: 18px; font-weight: bold; color: ${last60Days >= 0 ? '#e74c3c' : '#27ae60'};">
                                 ${formatMoney(last60Days)}
@@ -413,17 +892,17 @@
                         </div>
                     </div>
                 </div>
-                <div class="chart-container">
+                <div class="card">
                     <div class="chart-title">当日资金流入流出总额</div>
-                    <canvas id="barChart"></canvas>
+                    <div class="chart-container">
+                        <canvas id="barChart"></canvas>
+                    </div>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">资金流入流出累积图</div>
-                    <canvas id="cumulativeChart"></canvas>
-                </div>
-                <div class="chart-container">
+                <div class="card">
                     <div class="chart-title">不同玩家资金流向</div>
-                    <canvas id="lineChart"></canvas>
+                    <div class="chart-container">
+                        <canvas id="lineChart"></canvas>
+                    </div>
                 </div>
             `;
             
@@ -431,14 +910,11 @@
             if (barChart) {
                 barChart.destroy();
             }
-            if (cumulativeChart) {
-                cumulativeChart.destroy();
-            }
             if (lineChart) {
                 lineChart.destroy();
             }
             
-            // 创建柱状图 - 当日资金净流向（正在 0 轴上方，负在 0 轴下方）+ 收盘价折线图
+            // 创建柱状图 - 当日资金净流向（正在 0 轴上方，负在 0 轴下方）+ 逆向累积折线 + 收盘价折线图
             const barCtx = document.getElementById('barChart').getContext('2d');
             barChart = new Chart(barCtx, {
                 type: 'bar',
@@ -460,6 +936,19 @@
                             borderWidth: 1
                         },
                         {
+                            label: '逆向累积',
+                            data: reverseCumulative,
+                            type: 'line',
+                            yAxisID: 'y',
+                            borderColor: 'rgba(155, 89, 182, 1)',
+                            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 2,
+                            pointHoverRadius: 4
+                        },
+                        {
                             label: '收盘价',
                             data: closePrice,
                             type: 'line',
@@ -499,110 +988,13 @@
                         y1: {
                             type: 'linear',
                             position: 'right',
+                            beginAtZero: false, // 不强制从0开始，参考不同玩家资金流向的处理方式
                             title: {
                                 display: true,
                                 text: '收盘价（元）'
                             },
                             grid: {
                                 drawOnChartArea: false, // 只在右侧Y轴显示网格线
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return formatPrice(value);
-                                }
-                            }
-                        }
-                    },
-                    plugins: {
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    if (context.dataset.yAxisID === 'y1') {
-                                        label += formatPrice(context.parsed.y);
-                                    } else {
-                                        label += formatMoney(context.parsed.y);
-                                    }
-                                    return label;
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // 创建柱状图 - 资金流入流出累积图 + 收盘价折线图
-            const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
-            cumulativeChart = new Chart(cumulativeCtx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '历史累积',
-                            data: forwardCumulative,
-                            yAxisID: 'y',
-                            backgroundColor: 'rgba(52, 152, 219, 0.6)',
-                            borderColor: 'rgba(52, 152, 219, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: '逆向历史累积',
-                            data: reverseCumulative,
-                            yAxisID: 'y',
-                            backgroundColor: 'rgba(155, 89, 182, 0.6)',
-                            borderColor: 'rgba(155, 89, 182, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: '收盘价',
-                            data: closePrice,
-                            type: 'line',
-                            yAxisID: 'y1',
-                            borderColor: 'rgba(255, 152, 0, 1)',
-                            backgroundColor: 'rgba(255, 152, 0, 0.1)',
-                            borderWidth: 2,
-                            tension: 0.4,
-                            fill: false,
-                            pointRadius: 2,
-                            pointHoverRadius: 4
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        y: {
-                            type: 'linear',
-                            position: 'left',
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: '资金流向（万/亿）'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return formatMoney(value);
-                                }
-                            }
-                        },
-                        y1: {
-                            type: 'linear',
-                            position: 'right',
-                            title: {
-                                display: true,
-                                text: '收盘价（元）'
-                            },
-                            grid: {
-                                drawOnChartArea: false,
                             },
                             ticks: {
                                 callback: function(value) {
