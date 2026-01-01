@@ -325,7 +325,7 @@
                 const result = await response.json();
                 
                 if (result.code === 0 && result.data.length > 0) {
-                    let html = '<table><thead><tr><th>日期</th><th>收盘价</th><th>涨跌幅</th><th>主力净流入</th><th>超大单</th><th>主力占比</th><th>换手率</th><th>成交额</th></tr></thead><tbody>';
+                    let html = '<table><thead><tr><th>日期</th><th>收盘价</th><th>涨跌幅</th><th>主力净流入</th><th>超大单</th><th>主力占比</th></tr></thead><tbody>';
                     
                     result.data.forEach(item => {
                         const changeClass = item.change_percent > 0 ? 'positive' : 'negative';
@@ -337,8 +337,6 @@
                                 <td class="${item.main_net_inflow > 0 ? 'positive' : 'negative'}">${formatMoney(item.main_net_inflow)}</td>
                                 <td>${formatMoney(item.super_large_net_inflow || 0)}</td>
                                 <td>${(item.main_net_inflow_ratio || 0).toFixed(2)}%</td>
-                                <td>${(item.turnover_rate || 0).toFixed(2)}%</td>
-                                <td>${formatMoney(item.turnover_amount || 0)}</td>
                             </tr>
                         `;
                     });

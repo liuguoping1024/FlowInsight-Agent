@@ -57,7 +57,7 @@ class RecommendationCalculator:
             # 获取最近N天的历史数据
             sql_history = """
             SELECT trade_date, main_net_inflow, small_net_inflow, 
-                   close_price, change_percent, turnover_rate
+                   close_price, change_percent
             FROM stock_capital_flow_history
             WHERE secid = %s
             AND trade_date >= DATE_SUB(%s, INTERVAL %s DAY)

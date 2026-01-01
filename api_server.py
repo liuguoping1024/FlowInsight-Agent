@@ -390,9 +390,7 @@ def get_stock_history(secid):
                small_net_inflow,
                main_net_inflow_ratio, 
                close_price, 
-               change_percent,
-               turnover_rate, 
-               turnover_amount
+               change_percent
         FROM stock_capital_flow_history
         WHERE secid = %s AND trade_date BETWEEN %s AND %s
         ORDER BY trade_date ASC
@@ -420,9 +418,7 @@ def get_stock_history(secid):
                 'small_net_inflow': to_float(item.get('small_net_inflow', 0)),
                 'main_net_inflow_ratio': to_float(item.get('main_net_inflow_ratio', 0)),
                 'close_price': to_float(item.get('close_price', 0)),
-                'change_percent': to_float(item.get('change_percent', 0)),
-                'turnover_rate': to_float(item.get('turnover_rate', 0)),
-                'turnover_amount': to_float(item.get('turnover_amount', 0))
+                'change_percent': to_float(item.get('change_percent', 0))
             })
         
         return jsonify({'code': 0, 'data': result})

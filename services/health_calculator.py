@@ -28,7 +28,7 @@ class HealthCalculator:
         # 获取最近30天的数据
         sql = """
         SELECT trade_date, main_net_inflow, super_large_net_inflow,
-               close_price, change_percent, turnover_rate, turnover_amount
+               close_price, change_percent
         FROM stock_capital_flow_history
         WHERE secid = %s AND trade_date <= %s
         ORDER BY trade_date DESC
@@ -104,18 +104,9 @@ class HealthCalculator:
                 price_score = 10
             
             # 4. 成交量活跃度（10分）
-            if recent_7d:
-                avg_turnover_rate = sum(float(d['turnover_rate'] or 0) for d in recent_7d) / len(recent_7d)
-                if avg_turnover_rate > 5:
-                    turnover_score = 10
-                elif avg_turnover_rate > 3:
-                    turnover_score = 7
-                elif avg_turnover_rate > 1:
-                    turnover_score = 5
-                else:
-                    turnover_score = 2
-            else:
-                turnover_score = 5
+            # 注意：由于资金流向API不提供换手率数据，此部分暂时使用固定分数
+            # 后续可以从K线数据API获取换手率
+            turnover_score = 5  # 默认给中等分数
             
             # 计算总分
             total_score = inflow_score + trend_score + price_score + turnover_score

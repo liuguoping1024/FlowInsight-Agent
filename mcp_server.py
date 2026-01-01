@@ -207,7 +207,7 @@ class MCPServer:
             sql = """
             SELECT trade_date, main_net_inflow, super_large_net_inflow, large_net_inflow,
                    medium_net_inflow, small_net_inflow, main_net_inflow_ratio,
-                   close_price, change_percent, turnover_rate, turnover_amount
+                   close_price, change_percent
             FROM stock_capital_flow_history
             WHERE secid = %s AND trade_date >= %s
             ORDER BY trade_date DESC
@@ -217,7 +217,7 @@ class MCPServer:
             sql = """
             SELECT trade_date, main_net_inflow, super_large_net_inflow, large_net_inflow,
                    medium_net_inflow, small_net_inflow, main_net_inflow_ratio,
-                   close_price, change_percent, turnover_rate, turnover_amount
+                   close_price, change_percent
             FROM stock_capital_flow_history
             WHERE secid = %s
             ORDER BY trade_date DESC

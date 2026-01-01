@@ -296,38 +296,47 @@ class DataCollector:
                     elif isinstance(trade_date, str):
                         trade_date = datetime.strptime(trade_date, '%Y-%m-%d').date()
                     
-                    # 根据 CAPITAL_FLOW_FIELDS 映射：
+                    # 根据 api-1.md 文档，正确的字段映射如下：
+                    # f51: date (日期)
                     # f52: main_net_inflow (主力净流入)
-                    # f53: super_large_net_inflow (超大单净流入)
-                    # f54: large_net_inflow (大单净流入)
-                    # f55: medium_net_inflow (中单净流入)
-                    # f56: small_net_inflow (小单净流入)
-                    # f57: main_net_inflow_pct (主力净流入占比)
-                    # f61: small_net_inflow_pct (小单净流入占比)
-                    # f62: main_net_inflow_trend (主力净流入趋势)
-                    # f63: main_net_inflow_trend_pct (主力净流入趋势占比)
+                    # f53: small_net_inflow (小单净流入)
+                    # f54: medium_net_inflow (中单净流入)
+                    # f55: large_net_inflow (大单净流入)
+                    # f56: super_large_net_inflow (超大单净流入)
+                    # f57: main_net_inflow_ratio (主力净流入占比)
+                    # f58: small_net_inflow_ratio (小单净流入占比)
+                    # f59: medium_net_inflow_ratio (中单净流入占比)
+                    # f60: large_net_inflow_ratio (大单净流入占比)
+                    # f61: super_large_net_inflow_ratio (超大单净流入占比)
+                    # f62: close_price (收盘价)
+                    # f63: change_percent (涨跌幅)
+                    # f64: 换手率 (不存储)
+                    # f65: 振幅 (不存储)
+                    # 注意：主力净流入 = 超大单净流入 + 大单净流入
                     
                     main_net_inflow = float(row.get('f52', 0)) if pd.notna(row.get('f52')) else 0
-                    super_large_net_inflow = float(row.get('f53', 0)) if pd.notna(row.get('f53')) else 0
-                    large_net_inflow = float(row.get('f54', 0)) if pd.notna(row.get('f54')) else 0
-                    medium_net_inflow = float(row.get('f55', 0)) if pd.notna(row.get('f55')) else 0
-                    small_net_inflow = float(row.get('f56', 0)) if pd.notna(row.get('f56')) else 0
+                    small_net_inflow = float(row.get('f53', 0)) if pd.notna(row.get('f53')) else 0
+                    medium_net_inflow = float(row.get('f54', 0)) if pd.notna(row.get('f54')) else 0
+                    large_net_inflow = float(row.get('f55', 0)) if pd.notna(row.get('f55')) else 0
+                    super_large_net_inflow = float(row.get('f56', 0)) if pd.notna(row.get('f56')) else 0
                     main_net_inflow_ratio = float(row.get('f57', 0)) if pd.notna(row.get('f57')) else 0
+                    small_net_inflow_ratio = float(row.get('f58', 0)) if pd.notna(row.get('f58')) else 0
+                    medium_net_inflow_ratio = float(row.get('f59', 0)) if pd.notna(row.get('f59')) else 0
+                    large_net_inflow_ratio = float(row.get('f60', 0)) if pd.notna(row.get('f60')) else 0
+                    super_large_net_inflow_ratio = float(row.get('f61', 0)) if pd.notna(row.get('f61')) else 0
                     
-                    # 尝试获取收盘价和涨跌幅（如果存在）
-                    # 注意：get_history_capital_flow 可能不包含这些字段，需要从其他API获取
-                    close_price = float(row.get('f61', 0)) if pd.notna(row.get('f61')) and 'f61' in row.index else None
-                    change_percent = float(row.get('f62', 0)) if pd.notna(row.get('f62')) and 'f62' in row.index else None
-                    
-                    # 如果 close_price 和 change_percent 不在资金流向数据中，设为 None
-                    # 这些数据可能需要从 K线数据中获取
-                    if close_price == 0:
+                    # 获取收盘价和涨跌幅（f62和f63）
+                    # 重要修正：根据实际API返回数据验证，f62是收盘价，f63是涨跌幅
+                    # 收盘价可能为负数（复权价格）或0（停牌），所以不能简单地判断==0就设为None
+                    if 'f62' in row.index and pd.notna(row.get('f62')):
+                        close_price = float(row.get('f62'))
+                    else:
                         close_price = None
-                    if change_percent == 0:
-                        change_percent = None
                     
-                    turnover_amount = None  # 成交额（API未提供）
-                    turnover_rate = None   # 换手率（API未提供）
+                    if 'f63' in row.index and pd.notna(row.get('f63')):
+                        change_percent = float(row.get('f63'))
+                    else:
+                        change_percent = None
                     
                     # 将原始数据转换为JSON字符串格式存储
                     import json
@@ -340,15 +349,17 @@ class DataCollector:
                         'secid': secid,
                         'trade_date': trade_date,
                         'main_net_inflow': main_net_inflow,  # f52: 主力净流入
-                        'super_large_net_inflow': super_large_net_inflow,  # f53: 超大单净流入
-                        'large_net_inflow': large_net_inflow,  # f54: 大单净流入
-                        'medium_net_inflow': medium_net_inflow,  # f55: 中单净流入
-                        'small_net_inflow': small_net_inflow,  # f56: 小单净流入
+                        'small_net_inflow': small_net_inflow,  # f53: 小单净流入
+                        'medium_net_inflow': medium_net_inflow,  # f54: 中单净流入
+                        'large_net_inflow': large_net_inflow,  # f55: 大单净流入
+                        'super_large_net_inflow': super_large_net_inflow,  # f56: 超大单净流入
                         'main_net_inflow_ratio': main_net_inflow_ratio,  # f57: 主力净流入占比
-                        'close_price': close_price,  # f61: 收盘价（如果存在）
-                        'change_percent': change_percent,  # f62: 涨跌幅（如果存在）
-                        'turnover_rate': turnover_rate,  # 换手率（待确认字段）
-                        'turnover_amount': turnover_amount,  # 成交额（待确认字段）
+                        'small_net_inflow_ratio': small_net_inflow_ratio,  # f58: 小单净流入占比
+                        'medium_net_inflow_ratio': medium_net_inflow_ratio,  # f59: 中单净流入占比
+                        'large_net_inflow_ratio': large_net_inflow_ratio,  # f60: 大单净流入占比
+                        'super_large_net_inflow_ratio': super_large_net_inflow_ratio,  # f61: 超大单净流入占比
+                        'close_price': close_price,  # f62: 收盘价
+                        'change_percent': change_percent,  # f63: 涨跌幅
                         'raw_data': raw_data_json
                     })
                 except Exception as e:
@@ -442,13 +453,15 @@ class DataCollector:
             result['sync_stats']['updated_days'] = 0
         
         # 4. 执行数据库插入/更新
+        # 注意：字段顺序需要与数据库表结构一致
         sql = """
         INSERT INTO stock_capital_flow_history (
             stock_code, market_code, secid, trade_date,
             main_net_inflow, super_large_net_inflow, large_net_inflow,
             medium_net_inflow, small_net_inflow, main_net_inflow_ratio,
-            close_price, change_percent, turnover_rate, turnover_amount, raw_data
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            small_net_inflow_ratio, medium_net_inflow_ratio, large_net_inflow_ratio,
+            super_large_net_inflow_ratio, close_price, change_percent, raw_data
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE
             main_net_inflow = VALUES(main_net_inflow),
             super_large_net_inflow = VALUES(super_large_net_inflow),
@@ -456,10 +469,12 @@ class DataCollector:
             medium_net_inflow = VALUES(medium_net_inflow),
             small_net_inflow = VALUES(small_net_inflow),
             main_net_inflow_ratio = VALUES(main_net_inflow_ratio),
+            small_net_inflow_ratio = VALUES(small_net_inflow_ratio),
+            medium_net_inflow_ratio = VALUES(medium_net_inflow_ratio),
+            large_net_inflow_ratio = VALUES(large_net_inflow_ratio),
+            super_large_net_inflow_ratio = VALUES(super_large_net_inflow_ratio),
             close_price = VALUES(close_price),
             change_percent = VALUES(change_percent),
-            turnover_rate = COALESCE(VALUES(turnover_rate), turnover_rate),
-            turnover_amount = COALESCE(VALUES(turnover_amount), turnover_amount),
             raw_data = VALUES(raw_data),
             updated_at = NOW()
         """
@@ -468,8 +483,8 @@ class DataCollector:
             (d['stock_code'], d['market_code'], d['secid'], d['trade_date'],
              d['main_net_inflow'], d['super_large_net_inflow'], d['large_net_inflow'],
              d['medium_net_inflow'], d['small_net_inflow'], d['main_net_inflow_ratio'],
-             d['close_price'], d['change_percent'], d['turnover_rate'],
-             d['turnover_amount'], d['raw_data'])
+             d['small_net_inflow_ratio'], d['medium_net_inflow_ratio'], d['large_net_inflow_ratio'],
+             d['super_large_net_inflow_ratio'], d['close_price'], d['change_percent'], d['raw_data'])
             for d in history_data
         ]
         
