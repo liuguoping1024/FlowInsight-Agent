@@ -161,14 +161,14 @@
         /* K线图样式（包含成交量） */
         .kline-chart-container {
             position: relative;
-            height: 550px;  /* 调整高度，减少空白 */
+            height: 480px;  /* 成交量高度减半，相应缩短 */
             width: 100%;
         }
         
         /* 指标图容器 */
         .indicator-chart-container {
             position: relative;
-            height: 300px;
+            height: 200px;  /* MACD高度减少到2/3 */
             width: 100%;
         }
         
@@ -658,6 +658,23 @@
             }
         }
         
+        // 计算MA（简单移动平均）
+        function calculateMA(data, period) {
+            const ma = [];
+            for (let i = 0; i < data.length; i++) {
+                if (i < period - 1) {
+                    ma[i] = null; // 前period-1个数据点没有MA值
+                } else {
+                    let sum = 0;
+                    for (let j = i - period + 1; j <= i; j++) {
+                        sum += data[j];
+                    }
+                    ma[i] = sum / period;
+                }
+            }
+            return ma;
+        }
+        
         // 计算EMA（指数移动平均）
         function calculateEMA(data, period) {
             const ema = [];
@@ -861,6 +878,7 @@ MACD周期说明：
         let currentAllHighPrices = [];
         let currentAllLowPrices = [];
         let currentAllVolumes = [];
+        let currentAllChangePercents = [];
         
         function renderTechnicalCharts(data) {
             const content = document.getElementById('technical-charts-content');
@@ -872,6 +890,7 @@ MACD周期说明：
             const allHighPrices = data.map(d => d.high_price || 0);
             const allLowPrices = data.map(d => d.low_price || 0);
             const allVolumes = data.map(d => d.volume || 0);
+            const allChangePercents = data.map(d => d.change_percent || null);  // 涨幅（来自API）
             
             // 保存原始数据，用于重新计算MACD
             currentAllClosePrices = allClosePrices;
@@ -880,10 +899,15 @@ MACD周期说明：
             currentAllHighPrices = allHighPrices;
             currentAllLowPrices = allLowPrices;
             currentAllVolumes = allVolumes;
+            currentAllChangePercents = allChangePercents;
             
             // 使用全部120个数据点计算技术指标（默认标准周期）
             const macdData = calculateMACD(allClosePrices, 12, 26, 9);
             const kdjData = calculateKDJ(allHighPrices, allLowPrices, allClosePrices);
+            
+            // 计算MA5和MA60（使用全部数据计算）
+            const ma5 = calculateMA(allClosePrices, 5);
+            const ma60 = calculateMA(allClosePrices, 60);
             
             // 只显示最近80个交易日的数据
             const displayCount = 80;
@@ -896,6 +920,9 @@ MACD周期说明：
             const highPrices = allHighPrices.slice(startIndex);
             const lowPrices = allLowPrices.slice(startIndex);
             const volumes = allVolumes.slice(startIndex);
+            const changePercents = allChangePercents.slice(startIndex);  // 涨幅数据
+            const ma5Data = ma5.slice(startIndex);  // MA5数据
+            const ma60Data = ma60.slice(startIndex);  // MA60数据
             
             // 提取最后80个交易日的MACD数据
             const displayMacdData = {
@@ -957,7 +984,7 @@ MACD周期说明：
             }
             
             // 绘制K线图（包含成交量，在同一张图上）
-            renderKlineChart(labels, openPrices, highPrices, lowPrices, closePrices, volumes);
+            renderKlineChart(labels, openPrices, highPrices, lowPrices, closePrices, volumes, changePercents, ma5Data, ma60Data);
             
             // 绘制MACD图（只显示最近80个交易日）
             renderMACDChart(labels, displayMacdData);
@@ -966,11 +993,11 @@ MACD周期说明：
             renderKDJChart(labels, displayKdjData);
         }
         
-        function renderKlineChart(labels, openPrices, highPrices, lowPrices, closePrices, volumes) {
+        function renderKlineChart(labels, openPrices, highPrices, lowPrices, closePrices, volumes, changePercents, ma5Data, ma60Data) {
             const ctx = document.getElementById('klineChart').getContext('2d');
             
-            // 计算价格范围，用于设置Y轴
-            const allPrices = [...highPrices, ...lowPrices, ...openPrices, ...closePrices].filter(p => p > 0);
+            // 计算价格范围，用于设置Y轴（包括MA5和MA60）
+            const allPrices = [...highPrices, ...lowPrices, ...openPrices, ...closePrices, ...ma5Data.filter(p => p !== null), ...ma60Data.filter(p => p !== null)].filter(p => p > 0);
             const minPrice = Math.min(...allPrices);
             const maxPrice = Math.max(...allPrices);
             const priceRange = maxPrice - minPrice;
@@ -997,6 +1024,32 @@ MACD周期说明：
                             fill: false,
                             pointRadius: 0,
                             order: 1
+                        },
+                        {
+                            label: 'MA5',
+                            data: ma5Data,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(231, 76, 60, 1)',  // 红色
+                            backgroundColor: 'rgba(231, 76, 60, 1)',  // 红色（tooltip使用这个颜色）
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false,
+                            order: 2
+                        },
+                        {
+                            label: 'MA60',
+                            data: ma60Data,
+                            yAxisID: 'y',
+                            borderColor: 'rgba(39, 174, 96, 1)',  // 绿色
+                            backgroundColor: 'rgba(39, 174, 96, 1)',  // 绿色（tooltip使用这个颜色）
+                            borderWidth: 2,
+                            tension: 0.1,
+                            fill: false,
+                            pointRadius: 0,
+                            pointStyle: false,
+                            order: 3
                         }
                     ]
                 },
@@ -1017,22 +1070,64 @@ MACD周期说明：
                             display: false
                         },
                         tooltip: {
+                            usePointStyle: true,  // 使用点样式，确保颜色框显示
+                            displayColors: true,  // 确保显示颜色框
                             callbacks: {
                                 label: function(context) {
                                     const index = context.dataIndex;
-                                    const open = openPrices[index];
-                                    const close = closePrices[index];
-                                    const high = highPrices[index];
-                                    const low = lowPrices[index];
-                                    const volume = volumes[index];
-                                    const volumeInWan = volume >= 10000 ? (volume / 10000).toFixed(2) + '万手' : volume + '手';
-                                    return [
-                                        `开盘: ${open.toFixed(2)}`,
-                                        `收盘: ${close.toFixed(2)}`,
-                                        `最高: ${high.toFixed(2)}`,
-                                        `最低: ${low.toFixed(2)}`,
-                                        `成交量: ${volumeInWan}`
-                                    ];
+                                    const datasetIndex = context.datasetIndex;
+                                    
+                                    // 第一个数据集（收盘价）显示K线信息
+                                    if (datasetIndex === 0) {
+                                        const open = openPrices[index];
+                                        const close = closePrices[index];
+                                        const high = highPrices[index];
+                                        const low = lowPrices[index];
+                                        const volume = volumes[index];
+                                        const volumeInWan = volume >= 10000 ? (volume / 10000).toFixed(2) + '万手' : volume + '手';
+                                        
+                                        // 使用API返回的涨幅数据
+                                        let changePercentText = '';
+                                        if (changePercents && changePercents[index] !== null && changePercents[index] !== undefined) {
+                                            const percent = changePercents[index];
+                                            const sign = percent >= 0 ? '+' : '';
+                                            changePercentText = `涨幅: ${sign}${percent.toFixed(2)}%`;
+                                        }
+                                        
+                                        const result = [
+                                            `开盘: ${open.toFixed(2)}`,
+                                            `收盘: ${close.toFixed(2)}`,
+                                            `最高: ${high.toFixed(2)}`,
+                                            `最低: ${low.toFixed(2)}`,
+                                            `成交量: ${volumeInWan}`
+                                        ];
+                                        
+                                        if (changePercentText) {
+                                            result.push(changePercentText);
+                                        }
+                                        
+                                        return result;
+                                    }
+                                    // MA5数据集 - 自动使用红色
+                                    else if (datasetIndex === 1) {
+                                        const ma5Value = ma5Data[index];
+                                        if (ma5Value !== null && ma5Value !== undefined) {
+                                            return `MA5: ${ma5Value.toFixed(2)}`;
+                                        }
+                                        // 如果值为null，不显示该项
+                                        return null;
+                                    }
+                                    // MA60数据集 - 自动使用绿色
+                                    else if (datasetIndex === 2) {
+                                        const ma60Value = ma60Data[index];
+                                        if (ma60Value !== null && ma60Value !== undefined) {
+                                            return `MA60: ${ma60Value.toFixed(2)}`;
+                                        }
+                                        // 如果值为null，不显示该项
+                                        return null;
+                                    }
+                                    
+                                    return null;
                                 }
                             }
                         }
@@ -1067,9 +1162,9 @@ MACD周期说明：
                         const chartArea = chart.chartArea;
                         
                         // 计算K线区域和成交量区域的分界线
-                        // K线区域占70%，成交量区域占30%
-                        const klineAreaRatio = 0.7;
-                        const volumeAreaRatio = 0.3;
+                        // K线区域占85%，成交量区域占15%（成交量高度减半）
+                        const klineAreaRatio = 0.85;
+                        const volumeAreaRatio = 0.15;
                         const klineAreaHeight = chartArea.height * klineAreaRatio;
                         const volumeAreaHeight = chartArea.height * volumeAreaRatio;
                         const volumeAreaTop = chartArea.top + klineAreaHeight;
@@ -1398,8 +1493,8 @@ MACD周期说明：
                         },
                         y: {
                             position: 'right',
-                            min: 0,
-                            max: 100,
+                            min: -20,
+                            max: 120,
                             title: {
                                 display: true,
                                 text: 'KDJ值'
