@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票资金分析 - FlowInsight</title>
+    <title>资金分析 - FlowInsight</title>
     <link rel="stylesheet" href="css/common.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
@@ -328,17 +328,17 @@
         <nav-bar></nav-bar>
         
         <div class="container">
-            <!-- 股票资金分析 -->
+            <!-- 资金分析 -->
             <div class="card">
                 <div class="card-header">
-                    <div class="card-title">📊 股票资金分析</div>
+                    <div class="card-title">📊 资金分析</div>
                     <div class="stock-selector">
                         <div class="stock-search">
-                            <input type="text" id="stock-search-input" placeholder="输入股票代码或名称" onkeypress="if(event.key==='Enter') searchStock()">
+                            <input type="text" id="stock-search-input" placeholder="输入代码或名称" onkeypress="if(event.key==='Enter') searchStock()">
                             <button onclick="searchStock()">查询</button>
                         </div>
                         <select id="stock-selector" onchange="loadStockHistory()">
-                            <option value="">请选择股票或指数...</option>
+                            <option value="">请选择...</option>
                         </select>
                     </div>
                 </div>
@@ -347,8 +347,8 @@
                 </div>
             </div>
             <div class="description-text">
-                选择股票或指数，查看最近60个交易日（90天内）的资金流向数据<br>
-                <span style="color: #999;">默认包含：上证指数、深证成指 + 您持股的股票</span>
+                选择标的，查看最近60个交易日（90天内）的资金流向数据<br>
+                <span style="color: #999;">默认包含：上证指数、深证成指 + 您的持仓</span>
             </div>
         </div>
     </div>
@@ -375,7 +375,7 @@
         
         let barChart = null;
         let lineChart = null;
-        let stockList = []; // 保存股票列表用于搜索
+        let stockList = []; // 保存列表用于搜索
         
         // 自定义对话框函数
         function showCustomDialog(options) {
@@ -482,10 +482,10 @@
                 const result = await response.json();
                 
                 if (result.code === 0 && result.data.length > 0) {
-                    // 保存股票列表用于搜索
+                    // 保存列表用于搜索
                     stockList = result.data;
                     
-                    selector.innerHTML = '<option value="">请选择股票或指数...</option>';
+                    selector.innerHTML = '<option value="">请选择...</option>';
                     let defaultSecid = null; // 默认选中的secid（上证指数）
                     
                     result.data.forEach(stock => {
@@ -515,7 +515,7 @@
                     selector.innerHTML = '<option value="">加载中...</option>';
                 }
             } catch (error) {
-                console.error('加载股票列表失败:', error);
+                console.error('加载列表失败:', error);
                 selector.innerHTML = '<option value="">加载失败</option>';
             }
         }
@@ -526,7 +526,7 @@
             const content = document.getElementById('stock-charts-content');
             
             if (!targetSecid) {
-                content.innerHTML = '<div class="loading">请先选择股票</div>';
+                content.innerHTML = '<div class="loading">请先选择</div>';
                 // 销毁现有图表
                 if (barChart) {
                     barChart.destroy();
@@ -567,129 +567,89 @@
             const query = searchInput.value.trim();
             
             if (!query) {
-                await showAlert('请输入股票代码或股票名称', 'warning');
+                await showAlert('请输入代码或名称', 'warning');
                 return;
             }
             
-            // 判断输入是纯数字（股票代码）还是文本（股票名称）
+            // 判断输入是纯数字（代码）还是文本（名称）
             const isNumericCode = /^\d+$/.test(query);
             
-            // 先从本地股票列表搜索（快速匹配）
-            let matchedStocks = [];
-            
-            if (isNumericCode) {
-                // 输入是纯数字，优先精确匹配股票代码
-                matchedStocks = stockList.filter(stock => {
-                    const code = (stock.stock_code || '').trim();
-                    return code === query;
-                });
-            } else {
-                // 输入是文本，匹配股票名称
-                const queryLower = query.toLowerCase();
-                matchedStocks = stockList.filter(stock => {
-                    const code = (stock.stock_code || '').trim();
-                    const name = (stock.stock_name || '').trim();
-                    // 优先精确匹配
-                    if (code.toLowerCase() === queryLower || name.toLowerCase() === queryLower) {
-                        return true;
-                    }
-                    // 然后模糊匹配
-                    return name.toLowerCase().includes(queryLower) || 
-                           code.toLowerCase().includes(queryLower);
-                });
-            }
-            
+            // 用户既然在输入框输入，应该优先从数据库搜索，确保找到所有匹配的标的
+            // 而不是从本地stockList搜索（本地列表可能不完整）
             let matchedStock = null;
             
-            // 如果本地找到匹配
-            if (matchedStocks.length > 0) {
-                // 如果只有一个匹配，直接使用
-                if (matchedStocks.length === 1) {
-                    matchedStock = matchedStocks[0];
-                } else {
-                    // 如果有多个匹配，显示选择对话框
-                    const choice = await showStockSelectionDialog(matchedStocks, query);
-                    if (choice) {
-                        matchedStock = choice;
-                    } else {
-                        return; // 用户取消选择
-                    }
+            try {
+                // 使用普通fetch，因为/api/stocks不需要认证
+                const response = await fetch(`${API_BASE}/stocks?keyword=${encodeURIComponent(query)}&page_size=50`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
                 }
-            }
-            
-            // 如果本地没找到，从数据库搜索
-            if (!matchedStock) {
-                try {
-                    // 使用普通fetch，因为/api/stocks不需要认证
-                    const response = await fetch(`${API_BASE}/stocks?keyword=${encodeURIComponent(query)}&page_size=50`);
-                    if (!response.ok) {
-                        throw new Error(`HTTP ${response.status}`);
-                    }
+                
+                const result = await response.json();
+                
+                if (result.code === 0 && result.data && result.data.length > 0) {
+                    let candidates = [];
                     
-                    const result = await response.json();
-                    
-                    if (result.code === 0 && result.data && result.data.length > 0) {
-                        let candidates = [];
+                    if (isNumericCode) {
+                        // 输入是纯数字，优先精确匹配代码
+                        candidates = result.data.filter(stock => {
+                            const code = (stock.stock_code || '').trim();
+                            return code === query;
+                        });
                         
-                        if (isNumericCode) {
-                            // 输入是纯数字，优先精确匹配股票代码
-                            candidates = result.data.filter(stock => {
-                                const code = (stock.stock_code || '').trim();
-                                return code === query;
-                            });
-                            
-                            // 如果精确匹配找到多个（如000001可能匹配到1.000001和0.000001），让用户选择
-                            if (candidates.length > 1) {
-                                // 显示选择对话框
-                                const choice = await showStockSelectionDialog(candidates, query);
-                                if (choice) {
-                                    matchedStock = choice;
-                                } else {
-                                    return; // 用户取消选择
-                                }
-                            } else if (candidates.length === 1) {
-                                matchedStock = candidates[0];
+                        // 如果精确匹配找到多个（如000001可能匹配到1.000001和0.000001），让用户选择
+                        if (candidates.length > 1) {
+                            // 显示选择对话框
+                            const choice = await showStockSelectionDialog(candidates, query);
+                            if (choice) {
+                                matchedStock = choice;
+                            } else {
+                                return; // 用户取消选择
                             }
-                        } else {
-                            // 输入是文本，优先精确匹配名称
+                        } else if (candidates.length === 1) {
+                            matchedStock = candidates[0];
+                        }
+                    } else {
+                        // 输入是文本，优先精确匹配名称
+                        candidates = result.data.filter(stock => {
+                            const code = (stock.stock_code || '').trim();
+                            const name = (stock.stock_name || '').trim();
+                            const queryLower = query.toLowerCase();
+                            return code.toLowerCase() === queryLower || 
+                                   name.toLowerCase() === queryLower;
+                        });
+                        
+                        // 如果没有精确匹配，尝试大小写不敏感的匹配
+                        if (candidates.length === 0) {
                             candidates = result.data.filter(stock => {
                                 const code = (stock.stock_code || '').trim();
                                 const name = (stock.stock_name || '').trim();
                                 const queryLower = query.toLowerCase();
-                                return code.toLowerCase() === queryLower || 
-                                       name.toLowerCase() === queryLower;
+                                return name.toLowerCase().includes(queryLower);
                             });
-                            
-                            // 如果没有精确匹配，尝试大小写不敏感的匹配
-                            if (candidates.length === 0) {
-                                candidates = result.data.filter(stock => {
-                                    const code = (stock.stock_code || '').trim();
-                                    const name = (stock.stock_name || '').trim();
-                                    const queryLower = query.toLowerCase();
-                                    return name.toLowerCase().includes(queryLower);
-                                });
+                        }
+                        
+                        // 如果找到多个匹配，显示选择对话框
+                        if (candidates.length > 1) {
+                            const choice = await showStockSelectionDialog(candidates, query);
+                            if (choice) {
+                                matchedStock = choice;
+                            } else {
+                                return; // 用户取消选择
                             }
-                            
-                            // 如果找到多个匹配，显示选择对话框
-                            if (candidates.length > 1) {
-                                const choice = await showStockSelectionDialog(candidates, query);
-                                if (choice) {
-                                    matchedStock = choice;
-                                } else {
-                                    return; // 用户取消选择
-                                }
-                            } else if (candidates.length === 1) {
-                                matchedStock = candidates[0];
-                            }
+                        } else if (candidates.length === 1) {
+                            matchedStock = candidates[0];
                         }
                     }
-                } catch (error) {
-                    console.error('搜索股票失败:', error);
                 }
+            } catch (error) {
+                console.error('搜索失败:', error);
+                await showAlert('搜索失败，请稍后重试', 'error');
+                return;
             }
             
             if (matchedStock) {
-                // 找到匹配的股票
+                // 找到匹配的标的
                 // 检查是否在下拉框中，如果不在则添加
                 const selector = document.getElementById('stock-selector');
                 let optionExists = false;
@@ -710,7 +670,7 @@
                     option.textContent = displayName;
                     selector.appendChild(option);
                     
-                    // 同时添加到本地股票列表
+                    // 同时添加到本地列表
                     if (!stockList.find(s => s.secid === matchedStock.secid)) {
                         stockList.push(matchedStock);
                     }
@@ -722,12 +682,12 @@
                 // 清空搜索框
                 searchInput.value = '';
             } else {
-                // 未找到匹配的股票
-                await showAlert(`未找到股票代码或名称为"${query}"的股票，请检查输入是否正确`, 'error');
+                // 未找到匹配的标的
+                await showAlert(`未找到代码或名称为"${query}"的标的，请检查输入是否正确`, 'error');
             }
         }
         
-        // 显示股票选择对话框（当有多个匹配结果时）
+        // 显示选择对话框（当有多个匹配结果时）
         function showStockSelectionDialog(stocks, query) {
             return new Promise((resolve) => {
                 // 创建对话框HTML
@@ -758,7 +718,7 @@
                 
                 content.innerHTML = `
                     <h3 style="margin-top: 0;">找到多个匹配结果（${query}）</h3>
-                    <p style="color: #666; margin-bottom: 15px;">请选择要查询的股票：</p>
+                    <p style="color: #666; margin-bottom: 15px;">请选择要查询的标的：</p>
                     <div id="stock-selection-list" style="margin-bottom: 15px;"></div>
                     <div style="text-align: right;">
                         <button id="cancel-selection" style="padding: 8px 16px; margin-right: 10px; border: 1px solid #ddd; background: white; border-radius: 5px; cursor: pointer;">取消</button>
@@ -787,7 +747,7 @@
                     item.innerHTML = `
                         <div style="font-weight: bold;">${stock.stock_code} ${stock.stock_name || ''}</div>
                         <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                            ${isIndex ? '📈 指数' : '📊 股票'} | ${stock.secid}
+                            ${isIndex ? '📈 指数' : '📊 标的'} | ${stock.secid}
                         </div>
                     `;
                     list.appendChild(item);
