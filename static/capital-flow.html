@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="css/common.css">
     <style>
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
+            width: 100%;
             padding: 20px;
+            box-sizing: border-box;
         }
         
         .card {
@@ -134,10 +134,11 @@
     </style>
 </head>
 <body style="display: none;">
-    <div id="app">
+    <div class="main-layout">
         <nav-bar></nav-bar>
         
-        <div class="container">
+        <div class="main-content">
+            <div class="container">
             <div class="nav-tabs">
                 <button class="nav-tab active" onclick="showPanel('realtime', this)">📊 本日资金流向</button>
                 <button class="nav-tab" onclick="showPanel('history', this)">📈 股票历史资金</button>
@@ -165,6 +166,8 @@
                     </div>
                     <div id="history-content" class="loading">请输入股票代码查询</div>
                 </div>
+            </div>
+        </div>
             </div>
         </div>
     </div>

@@ -8,10 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
             width: 100%;
+            padding: 20px;
             box-sizing: border-box;
         }
         
@@ -324,10 +322,11 @@
     </style>
 </head>
 <body style="display: none;">
-    <div id="app">
+    <div class="main-layout">
         <nav-bar></nav-bar>
         
-        <div class="container">
+        <div class="main-content">
+            <div class="container">
             <!-- 资金分析 -->
             <div class="card">
                 <div class="card-header">
@@ -349,6 +348,7 @@
             <div class="description-text">
                 选择标的，查看最近60个交易日（90天内）的资金流向数据<br>
                 <span style="color: #999;">默认包含：上证指数、深证成指 + 您的持仓</span>
+            </div>
             </div>
         </div>
     </div>
@@ -610,7 +610,7 @@
                             matchedStock = candidates[0];
                         }
                     } else {
-                        // 输入是文本，优先精确匹配名称
+                        // 输入是文本，优先精确匹配名称或代码
                         candidates = result.data.filter(stock => {
                             const code = (stock.stock_code || '').trim();
                             const name = (stock.stock_name || '').trim();
@@ -619,14 +619,20 @@
                                    name.toLowerCase() === queryLower;
                         });
                         
-                        // 如果没有精确匹配，尝试大小写不敏感的匹配
+                        // 如果没有精确匹配，尝试大小写不敏感的包含匹配
                         if (candidates.length === 0) {
                             candidates = result.data.filter(stock => {
                                 const code = (stock.stock_code || '').trim();
                                 const name = (stock.stock_name || '').trim();
                                 const queryLower = query.toLowerCase();
-                                return name.toLowerCase().includes(queryLower);
+                                return name.toLowerCase().includes(queryLower) ||
+                                       code.toLowerCase().includes(queryLower);
                             });
+                        }
+                        
+                        // 如果还是没有匹配（可能是拼音首字母搜索，API已经做了匹配），直接使用API返回的所有结果
+                        if (candidates.length === 0 && result.data.length > 0) {
+                            candidates = result.data;
                         }
                         
                         // 如果找到多个匹配，显示选择对话框

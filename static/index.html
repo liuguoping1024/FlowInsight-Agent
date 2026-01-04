@@ -14,28 +14,28 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
-            background: #fdf6e3; /* Base3 - Solarized Light */
-            color: #657b83; /* Base00 */
+            background: #ffffff;
+            color: #1a1a1a;
             min-height: 100vh;
-            padding: 20px;
         }
         
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
         }
         
         .header {
-            background: #eee8d5; /* Base2 */
+            background: #ffffff;
             padding: 20px;
             border-radius: 10px;
             margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border: 1px solid #93a1a1; /* Base1 */
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border: 1px solid #e0e0e0;
         }
         
         .header h1 {
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
             margin-bottom: 10px;
         }
         
@@ -47,33 +47,33 @@
         
         .nav-tab {
             padding: 10px 20px;
-            background: #eee8d5; /* Base2 */
-            border: 1px solid #93a1a1; /* Base1 */
+            background: #f5f5f5;
+            border: 1px solid #d9d9d9;
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
-            color: #657b83; /* Base00 */
+            color: #333333;
         }
         
         .nav-tab.active {
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
         }
         
         .nav-tab:hover {
-            background: #2aa198; /* Cyan */
-            color: #fdf6e3; /* Base3 */
+            background: #40a9ff;
+            color: #ffffff;
         }
         
         .content-panel {
             display: none;
-            background: #eee8d5; /* Base2 */
+            background: #ffffff;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
             margin-bottom: 20px;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
         }
         
         .content-panel.active {
@@ -81,18 +81,19 @@
         }
         
         .card {
-            background: #eee8d5; /* Base2 */
+            background: #ffffff;
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 15px;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
         .card-title {
             font-size: 18px;
             font-weight: bold;
             margin-bottom: 10px;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
         }
         
         table {
@@ -104,17 +105,17 @@
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid #93a1a1; /* Base1 */
+            border-bottom: 1px solid #e0e0e0;
         }
         
         th {
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
             font-weight: 600;
         }
         
         tr:hover {
-            background: #fdf6e3; /* Base3 */
+            background: #f8f9fa;
         }
         
         .positive {
@@ -189,12 +190,13 @@
         }
         
         .index-card {
-            background: #fdf6e3; /* Base3 - 浅色背景 */
-            color: #586e75; /* Base01 - 深色文字 */
+            background: #ffffff;
+            color: #1a1a1a;
             padding: 15px;
             border-radius: 8px;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
             transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
         .index-card:hover {
@@ -204,7 +206,7 @@
         
         .index-name {
             font-size: 14px;
-            color: #839496; /* Base0 */
+            color: #666666;
             margin-bottom: 5px;
         }
         
@@ -212,7 +214,7 @@
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 5px;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
         }
         
         .index-change {
@@ -236,18 +238,19 @@
         }
         
         .recommended-stock-card {
-            background: #eee8d5; /* Base2 */
-            border-left: 4px solid #268bd2; /* Blue */
+            background: #ffffff;
+            border-left: 4px solid #1890ff;
             padding: 15px;
             border-radius: 8px;
             transition: all 0.3s;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
         }
         
         .recommended-stock-card:hover {
-            box-shadow: 0 4px 12px rgba(38, 139, 210, 0.3);
+            box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
             transform: translateY(-2px);
-            background: #fdf6e3; /* Base3 */
+            background: #f8f9fa;
         }
         
         .recommended-stock-header {
@@ -260,18 +263,18 @@
         .recommended-stock-name {
             font-size: 18px;
             font-weight: bold;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
         }
         
         .recommended-stock-code {
             font-size: 14px;
-            color: #839496; /* Base0 */
+            color: #666666;
         }
         
         .recommended-stock-price {
             font-size: 20px;
             font-weight: bold;
-            color: #268bd2; /* Blue */
+            color: #1890ff;
         }
         
         .recommended-stock-info {
@@ -283,33 +286,33 @@
         }
         
         .recommended-stock-info-item {
-            background: #fdf6e3; /* Base3 */
+            background: #f8f9fa;
             padding: 8px;
             border-radius: 5px;
-            border: 1px solid #eee8d5; /* Base2 */
+            border: 1px solid #e0e0e0;
         }
         
         .recommended-stock-info-label {
-            color: #839496; /* Base0 */
+            color: #666666;
             font-size: 12px;
             margin-bottom: 4px;
         }
         
         .recommended-stock-info-value {
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
             font-weight: 600;
         }
         
         .recommended-reasons {
             margin-top: 10px;
             padding-top: 10px;
-            border-top: 1px solid #93a1a1; /* Base1 */
+            border-top: 1px solid #e0e0e0;
         }
         
         .recommended-reason-tag {
             display: inline-block;
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
             padding: 4px 8px;
             border-radius: 12px;
             font-size: 11px;
@@ -319,10 +322,11 @@
     </style>
 </head>
 <body style="display: none;">
-    <div id="app">
+    <div class="main-layout">
         <nav-bar></nav-bar>
         
-        <div class="container" style="max-width: 1400px; margin: 0 auto; padding: 20px;">
+        <div class="main-content">
+            <div class="container">
             <!-- 推荐股票 -->
             <div class="card" style="margin-bottom: 20px;">
                 <div class="card-title">🎯 推荐股票（大资金建仓中）</div>
@@ -338,6 +342,7 @@
             <div class="card">
                 <div class="card-title">📈 主要指数</div>
                 <div id="index-content" class="loading">加载中...</div>
+            </div>
             </div>
         </div>
     </div>
@@ -508,7 +513,7 @@
                 if (result.cached && !document.getElementById('cache-hint')) {
                     const cacheHint = document.createElement('div');
                     cacheHint.id = 'cache-hint';
-                    cacheHint.style.cssText = 'font-size: 12px; color: #839496; margin-bottom: 10px; padding: 8px; background: #eee8d5; border-radius: 5px; border: 1px solid #93a1a1;';
+                    cacheHint.style.cssText = 'font-size: 12px; color: #666666; margin-bottom: 10px; padding: 8px; background: #f8f9fa; border-radius: 5px; border: 1px solid #e0e0e0;';
                     cacheHint.textContent = '⚠️ 提示：显示的是缓存数据（5分钟内），避免频繁网络请求。爬虫技术有风险，请谨慎使用。';
                     content.parentElement.insertBefore(cacheHint, content);
                 } else if (!result.cached && document.getElementById('cache-hint')) {

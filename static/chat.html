@@ -7,12 +7,12 @@
     <link rel="stylesheet" href="css/common.css">
     <style>
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            width: 100%;
             padding: 20px;
             display: flex;
             flex-direction: column;
             height: calc(100vh - 100px);
+            box-sizing: border-box;
         }
         
         .chat-container {
@@ -186,10 +186,11 @@
     </style>
 </head>
 <body style="display: none;">
-    <div id="app">
+    <div class="main-layout">
         <nav-bar></nav-bar>
         
-        <div class="container">
+        <div class="main-content">
+            <div class="container">
             <div class="chat-container">
                 <div class="chat-header">
                     <div class="chat-title">💬 智能聊天助手</div>
@@ -219,6 +220,7 @@
                         <button type="submit" class="send-button" id="send-button">发送</button>
                     </form>
                 </div>
+            </div>
             </div>
         </div>
     </div>

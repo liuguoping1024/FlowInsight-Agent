@@ -7,21 +7,21 @@
     <link rel="stylesheet" href="css/common.css">
     <style>
         .settings-container {
-            max-width: 1400px;
-            margin: 0 auto;
+            width: 100%;
             padding: 20px;
             display: flex;
             gap: 20px;
+            box-sizing: border-box;
         }
         
         .settings-sidebar {
             width: 250px;
-            background: #eee8d5; /* Base2 */
+            background: #f8f9fa;
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             height: fit-content;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
         }
         
         .settings-menu-item {
@@ -33,25 +33,25 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #657b83; /* Base00 */
+            color: #333333;
         }
         
         .settings-menu-item:hover {
-            background: #fdf6e3; /* Base3 */
+            background: #ffffff;
         }
         
         .settings-menu-item.active {
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
         }
         
         .settings-content {
             flex: 1;
-            background: #eee8d5; /* Base2 */
+            background: #f8f9fa;
             border-radius: 10px;
             padding: 30px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
         }
         
         .settings-section {
@@ -66,7 +66,7 @@
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 30px;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
         }
         
         .form-group {
@@ -77,22 +77,22 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
         }
         
         .form-input {
             width: 100%;
             padding: 10px;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
             border-radius: 5px;
             font-size: 14px;
-            background: #fdf6e3; /* Base3 */
-            color: #657b83; /* Base00 */
+            background: #ffffff;
+            color: #333333;
         }
         
         .form-input:focus {
             outline: none;
-            border-color: #268bd2; /* Blue */
+            border-color: #1890ff;
         }
         
         .form-input.password {
@@ -146,8 +146,8 @@
         
         .btn-save {
             padding: 10px 24px;
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -172,13 +172,13 @@
         }
         
         .stock-list-table th {
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
             font-weight: 600;
         }
         
         .stock-list-table tr:hover {
-            background: #fdf6e3; /* Base3 */
+            background: #ffffff;
         }
         
         .btn-add {
@@ -220,16 +220,16 @@
             margin-bottom: 10px;
             cursor: pointer;
             transition: all 0.3s;
-            background: #fdf6e3; /* Base3 */
+            background: #ffffff;
         }
         
         .theme-option:hover {
-            border-color: #268bd2; /* Blue */
+            border-color: #1890ff;
         }
         
         .theme-option.selected {
-            border-color: #268bd2; /* Blue */
-            background: #eee8d5; /* Base2 */
+            border-color: #1890ff;
+            background: #f8f9fa;
         }
         
         .theme-option input[type="radio"] {
@@ -255,7 +255,7 @@
         }
         
         .modal {
-            background: #eee8d5; /* Base2 */
+            background: #f8f9fa;
             border-radius: 10px;
             padding: 30px;
             max-width: 500px;
@@ -263,7 +263,7 @@
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
         }
         
         .modal-header {
@@ -278,7 +278,7 @@
         .modal-title {
             font-size: 20px;
             font-weight: 600;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
             margin: 0;
         }
         
@@ -299,7 +299,7 @@
         }
         
         .modal-close:hover {
-            background: #fdf6e3; /* Base3 */
+            background: #ffffff;
             color: #dc322f; /* Red */
         }
         
@@ -318,24 +318,24 @@
         .modal-input {
             width: 100%;
             padding: 10px;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
             border-radius: 5px;
             font-size: 14px;
-            background: #fdf6e3; /* Base3 */
-            color: #657b83; /* Base00 */
+            background: #ffffff;
+            color: #333333;
             box-sizing: border-box;
         }
         
         .modal-input:focus {
             outline: none;
-            border-color: #268bd2; /* Blue */
+            border-color: #1890ff;
         }
         
         .modal-label {
             display: block;
             margin-bottom: 8px;
             font-weight: 500;
-            color: #586e75; /* Base01 */
+            color: #1a1a1a;
         }
         
         .modal-label .optional {
@@ -347,23 +347,23 @@
         .modal-select {
             width: 100%;
             padding: 10px;
-            border: 1px solid #93a1a1; /* Base1 */
+            border: 1px solid #e0e0e0;
             border-radius: 5px;
             font-size: 14px;
-            background: #fdf6e3; /* Base3 */
-            color: #657b83; /* Base00 */
+            background: #ffffff;
+            color: #333333;
             cursor: pointer;
         }
         
         .modal-select:focus {
             outline: none;
-            border-color: #268bd2; /* Blue */
+            border-color: #1890ff;
         }
         
         .btn-modal-primary {
             padding: 10px 24px;
-            background: #268bd2; /* Blue */
-            color: #fdf6e3; /* Base3 */
+            background: #1890ff;
+            color: #ffffff;
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -377,9 +377,9 @@
         
         .btn-modal-cancel {
             padding: 10px 24px;
-            background: #eee8d5; /* Base2 */
-            color: #657b83; /* Base00 */
-            border: 1px solid #93a1a1; /* Base1 */
+            background: #f8f9fa;
+            color: #333333;
+            border: 1px solid #e0e0e0;
             border-radius: 5px;
             cursor: pointer;
             font-size: 14px;
@@ -387,15 +387,16 @@
         }
         
         .btn-modal-cancel:hover {
-            background: #fdf6e3; /* Base3 */
+            background: #ffffff;
         }
     </style>
 </head>
 <body>
-    <div id="app">
+    <div class="main-layout">
         <nav-bar></nav-bar>
         
-        <div class="settings-container">
+        <div class="main-content">
+            <div class="settings-container">
             <!-- 左侧菜单 -->
             <div class="settings-sidebar">
                 <div class="settings-menu-item active" onclick="showSection('general', this)">
@@ -628,6 +629,8 @@
             <div class="modal-footer">
                 <button class="btn-modal-cancel" onclick="closeFavoriteModal()">取消</button>
                 <button class="btn-modal-primary" onclick="submitFavorite()">确定</button>
+            </div>
+        </div>
             </div>
         </div>
     </div>

@@ -257,7 +257,7 @@ def get_user_groups():
 
 @app.route('/api/stocks', methods=['GET'])
 def get_stocks():
-    """获取股票列表"""
+    """获取股票列表，支持拼音和拼音首字母搜索"""
     try:
         page = int(request.args.get('page', 1))
         page_size = int(request.args.get('page_size', 50))
@@ -266,16 +266,126 @@ def get_stocks():
         offset = (page - 1) * page_size
         
         if keyword:
-            sql = """
-            SELECT id, stock_code, market_code, stock_name, secid,
-                   total_market_cap, circulating_market_cap, last_sync_time
-            FROM stock_list
-            WHERE (stock_name LIKE %s OR stock_code LIKE %s) AND is_active = 1
-            ORDER BY stock_code
-            LIMIT %s OFFSET %s
-            """
-            keyword_pattern = f'%{keyword}%'
-            stocks = db.execute_query(sql, (keyword_pattern, keyword_pattern, page_size, offset))
+            # 尝试导入pypinyin库（如果可用）
+            try:
+                from pypinyin import lazy_pinyin, Style
+                
+                # 检查keyword是否是纯英文（可能是拼音首字母），支持大小写
+                is_english = keyword.isalpha()
+                
+                if is_english:
+                    # 统一转换为大写用于匹配
+                    keyword_upper = keyword.upper()
+                    # 可能是拼音首字母，需要获取所有股票并匹配
+                    # 先尝试普通搜索（代码和名称）
+                    sql = """
+                    SELECT id, stock_code, market_code, stock_name, secid,
+                           total_market_cap, circulating_market_cap, last_sync_time
+                    FROM stock_list
+                    WHERE (stock_name LIKE %s OR stock_code LIKE %s) AND is_active = 1
+                    ORDER BY stock_code
+                    LIMIT %s OFFSET %s
+                    """
+                    keyword_pattern = f'%{keyword}%'
+                    stocks = list(db.execute_query(sql, (keyword_pattern, keyword_pattern, page_size, offset)))
+                    
+                    # 如果普通搜索没有结果，或者结果较少，尝试拼音匹配
+                    if len(stocks) == 0 or len(stocks) < page_size:
+                        # 获取更多数据用于拼音匹配
+                        sql_all = """
+                        SELECT id, stock_code, market_code, stock_name, secid,
+                               total_market_cap, circulating_market_cap, last_sync_time
+                        FROM stock_list
+                        WHERE is_active = 1
+                        ORDER BY stock_code
+                        LIMIT %s
+                        """
+                        all_stocks = list(db.execute_query(sql_all, (5000,)))  # 获取足够多的数据用于拼音匹配
+                        
+                        # 获取已匹配的secid
+                        matched_secids = {s['secid'] for s in stocks}
+                        
+                        # 匹配拼音首字母（keyword_upper已在上面定义）
+                        for stock in all_stocks:
+                            if stock['secid'] in matched_secids:
+                                continue
+                            stock_name = stock.get('stock_name', '')
+                            # 获取完整拼音
+                            pinyin_full_list = lazy_pinyin(stock_name, style=Style.NORMAL)
+                            pinyin_full = ''.join(pinyin_full_list)
+                            # 获取拼音首字母（每个词的第一个字母）
+                            pinyin_initials = ''.join([p[0].upper() for p in pinyin_full_list if p and len(p) > 0])
+                            
+                            # 匹配：代码、名称、拼音首字母（精确或包含）、完整拼音
+                            if (keyword_upper in stock.get('stock_code', '').upper() or
+                                keyword_upper in stock_name or
+                                keyword_upper == pinyin_initials or  # 精确匹配拼音首字母
+                                keyword_upper in pinyin_initials or  # 包含匹配
+                                keyword_upper in pinyin_full.upper()):
+                                stocks.append(stock)
+                                matched_secids.add(stock['secid'])
+                                if len(stocks) >= page_size:
+                                    break
+                else:
+                    # 普通搜索：代码、名称、拼音
+                    sql = """
+                    SELECT id, stock_code, market_code, stock_name, secid,
+                           total_market_cap, circulating_market_cap, last_sync_time
+                    FROM stock_list
+                    WHERE (stock_name LIKE %s OR stock_code LIKE %s) AND is_active = 1
+                    ORDER BY stock_code
+                    LIMIT %s OFFSET %s
+                    """
+                    keyword_pattern = f'%{keyword}%'
+                    stocks = list(db.execute_query(sql, (keyword_pattern, keyword_pattern, page_size, offset)))
+                    
+                    # 如果结果较少，尝试拼音匹配
+                    if len(stocks) < page_size:
+                        sql_all = """
+                        SELECT id, stock_code, market_code, stock_name, secid,
+                               total_market_cap, circulating_market_cap, last_sync_time
+                        FROM stock_list
+                        WHERE is_active = 1
+                        ORDER BY stock_code
+                        LIMIT %s
+                        """
+                        all_stocks = list(db.execute_query(sql_all, (page_size * 5,)))
+                        
+                        # 获取已匹配的secid
+                        matched_secids = {s['secid'] for s in stocks}
+                        
+                        # 拼音匹配
+                        keyword_lower = keyword.lower()
+                        for stock in all_stocks:
+                            if stock['secid'] in matched_secids:
+                                continue
+                            stock_name = stock.get('stock_name', '')
+                            # 获取完整拼音
+                            pinyin_full_list = lazy_pinyin(stock_name, style=Style.NORMAL)
+                            pinyin_full = ''.join(pinyin_full_list)
+                            # 获取拼音首字母（每个词的第一个字母）
+                            pinyin_initials = ''.join([p[0].upper() for p in pinyin_full_list if p and len(p) > 0])
+                            
+                            if (keyword_lower in pinyin_full.lower() or
+                                keyword.upper() == pinyin_initials or  # 精确匹配拼音首字母
+                                keyword.upper() in pinyin_initials):  # 包含匹配
+                                stocks.append(stock)
+                                matched_secids.add(stock['secid'])
+                                if len(stocks) >= page_size:
+                                    break
+            except ImportError:
+                # 如果没有安装pypinyin，使用普通搜索
+                logger.warning("pypinyin not installed, using basic search only")
+                sql = """
+                SELECT id, stock_code, market_code, stock_name, secid,
+                       total_market_cap, circulating_market_cap, last_sync_time
+                FROM stock_list
+                WHERE (stock_name LIKE %s OR stock_code LIKE %s) AND is_active = 1
+                ORDER BY stock_code
+                LIMIT %s OFFSET %s
+                """
+                keyword_pattern = f'%{keyword}%'
+                stocks = list(db.execute_query(sql, (keyword_pattern, keyword_pattern, page_size, offset)))
         else:
             sql = """
             SELECT id, stock_code, market_code, stock_name, secid,
@@ -285,7 +395,7 @@ def get_stocks():
             ORDER BY stock_code
             LIMIT %s OFFSET %s
             """
-            stocks = db.execute_query(sql, (page_size, offset))
+            stocks = list(db.execute_query(sql, (page_size, offset)))
         
         return jsonify({'code': 0, 'data': stocks})
     except Exception as e:
@@ -462,7 +572,7 @@ def get_stock_kline(secid):
                 start_date_str = start_date
                 end_date_str = end_date_obj.strftime('%Y-%m-%d')
         
-        # 查询日K线数据
+        # 查询日K线数据（按日期降序排列，取最新的limit条，然后反转回升序）
         sql = """
         SELECT trade_date,
                open_price,
@@ -477,10 +587,13 @@ def get_stock_kline(secid):
                turnover_rate
         FROM stock_day_lines_history
         WHERE secid = %s AND trade_date BETWEEN %s AND %s
-        ORDER BY trade_date ASC
+        ORDER BY trade_date DESC
         LIMIT %s
         """
         kline_data = db.execute_query(sql, (secid, start_date_str, end_date_str, limit))
+        
+        # 反转数据，使其按日期升序排列（从旧到新）
+        kline_data = list(reversed(kline_data))
         
         # 处理Decimal类型
         from decimal import Decimal
